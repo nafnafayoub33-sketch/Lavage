@@ -7,8 +7,12 @@
  * destructive ones.
  *
  * The role is not written to the database here: profiles.full_name is NOT
- * NULL and no name has been collected yet, so the row cannot exist until A6
- * (client) or O1 (owner). It waits in the pendingRole store.
+ * NULL and no name has been collected yet, so the row cannot exist until A6.
+ * It waits in the pendingRole store.
+ *
+ * Both roles go to A6 next. Owners used to be sent straight to O1, which
+ * could not work — O1 inserts a car_wash whose owner_id references a profile
+ * row that would not exist yet.
  */
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -31,7 +35,8 @@ export default function RoleScreen() {
   const commit = async (role: SignupRole) => {
     setSaving(role);
     await choose(role);
-    router.replace(role === 'owner' ? '/(owner)/register' : '/(auth)/profile-setup');
+    // Same next screen for both — the paths diverge after A7.
+    router.replace('/(auth)/profile-setup');
   };
 
   // Irreversible: confirm before committing.
