@@ -338,27 +338,51 @@ export async function initI18n() {
     compatibilityJSON: 'v4',
   });
 
-  applyDirection(lng, { reload: false });
+  await applyDirection(lng, { reload: false });
   return i18n;
 }
 
 /**
  * React Native cannot flip layout direction live — it needs a restart.
  * Do it once, right after the user picks a language.
+ *
+ * Returns true when the direction changed but the restart did not happen, so
+ * the caller can tell the user the app still needs to restart. The strings and
+ * the language have already switched at that point; only the layout mirroring
+ * is pending.
  */
-function applyDirection(lng: Lang, { reload }: { reload: boolean }) {
+async function applyDirection(lng: Lang, { reload }: { reload: boolean }): Promise<boolean> {
   const shouldBeRTL = RTL_LANGS.includes(lng);
-  if (I18nManager.isRTL === shouldBeRTL) return;
+  if (I18nManager.isRTL === shouldBeRTL) return false;
 
   I18nManager.allowRTL(shouldBeRTL);
   I18nManager.forceRTL(shouldBeRTL);
-  if (reload) Updates.reloadAsync();
+  if (!reload) return true;
+
+  try {
+    await Updates.reloadAsync();
+    return false;
+  } catch {
+    // Throws in Expo Go and in any build without expo-updates enabled — which
+    // is every development build. Not an error worth crashing on: the language
+    // did change, the mirroring just waits for the next launch.
+    return true;
+  }
 }
 
-export async function setLanguage(lng: Lang) {
+export type LanguageChange = {
+  /**
+   * The layout direction changed but the app could not restart itself.
+   * Show the user `t('account.restartNeeded')`.
+   */
+  restartNeeded: boolean;
+};
+
+export async function setLanguage(lng: Lang): Promise<LanguageChange> {
   await AsyncStorage.setItem(STORAGE_KEY, lng);
   await i18n.changeLanguage(lng);
-  applyDirection(lng, { reload: true });
+  const restartNeeded = await applyDirection(lng, { reload: true });
+  return { restartNeeded };
 }
 
 export const currentLang = () => i18n.language as Lang;
