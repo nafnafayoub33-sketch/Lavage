@@ -3,6 +3,7 @@
  * One design, two schemes. The user picks: system / light / dark.
  * No screen may hardcode a color, a font size or a spacing value.
  */
+import type { TextStyle } from 'react-native';
 
 /* ------------------------------------------------------------------ */
 /* Colour                                                              */
@@ -49,7 +50,11 @@ const light = {
 } as const;
 
 export type ColorScheme = 'light' | 'dark';
-export type Colors = typeof dark;
+/**
+ * `dark` fixes the key set; the values are plain strings so `light` — which
+ * holds different literals — is assignable to the same type.
+ */
+export type Colors = Readonly<Record<keyof typeof dark, string>>;
 
 export const schemes: Record<ColorScheme, Colors> = { dark, light };
 
@@ -84,9 +89,9 @@ export const type = {
 } as const;
 
 /** every number keeps latin digits, tabular, LTR — in all three languages */
-export const numeric = {
-  fontVariant: ['tabular-nums'] as const,
-  writingDirection: 'ltr' as const,
+export const numeric: TextStyle = {
+  fontVariant: ['tabular-nums'],
+  writingDirection: 'ltr',
 };
 
 /* ------------------------------------------------------------------ */
