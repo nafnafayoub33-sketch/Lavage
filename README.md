@@ -43,13 +43,17 @@ Layout follows `docs/ARCHITECTURE.md`:
 
 ## What is built
 
-**A3 · phone**, **A4 · SMS code** and **A5 · account type**, with Supabase phone
-auth. `app/index.tsx` carries A1's routing decision (signed in → the app by role,
-otherwise → A3) without A1's logo screen.
+The whole auth flow: **A2 · language** → **A3 · phone** → **A4 · SMS code** →
+**A5 · account type** → **A6 · profile setup** → **A7 · permissions**, then the
+app for clients and O1 for owners. `app/index.tsx` carries A1's routing decision
+without A1's logo screen, including half-finished signups — a user who quit at A6
+resumes at A6, an owner who quit at O1 resumes at O1.
 
-Everything else is a placeholder that names the screen it stands in for — A6, O1,
-C1, O3, D1. A2 (language) is not built, so the language follows the device locale
-for now, and appearance follows the system setting until C14 lands.
+Everything past that is a placeholder that names the screen it stands in for —
+O1, O2, C1, O3, D1. Appearance follows the system setting until C14 lands.
+
+A6's optional photo is not built: it needs a Supabase Storage bucket that does not
+exist yet, so `avatar_url` stays null.
 
 **Phone auth needs an SMS provider** (Twilio, Vonage or MessageBird) configured in
 the Supabase dashboard under Authentication → Providers. Without it the code never
