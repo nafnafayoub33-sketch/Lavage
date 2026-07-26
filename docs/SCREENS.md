@@ -37,7 +37,12 @@ Dashboard · Approvals · Car washes · Users · Bookings · Disputes · Finance
 
 ### A2 · Language — `(auth)/language`
 - **Contents:** three large buttons: العربية / Français / English
-- **Note:** first launch only. Choosing Arabic switches the UI to RTL and restarts the app.
+- **Note:** first launch only — "has never chosen" is the absence of the stored
+  language, so this is skipped forever after the first pick. Changing it later
+  is C14.
+- **Note:** choosing Arabic switches the UI to RTL and restarts the app. When the
+  restart cannot happen (Expo Go, any build without expo-updates) the language
+  still changes and the user is told a restart is needed.
 - → A3
 
 ### A3 · Phone number — `(auth)/phone`
@@ -54,19 +59,27 @@ Dashboard · Approvals · Car washes · Users · Bookings · Disputes · Finance
 
 ### A5 · Account type — `(auth)/role`
 - **Contents:** two cards: "I have a car" / "I own a car wash"
-- **Important:** cannot be changed later except by an admin
-- → client: A6 | owner: O1
+- **Important:** cannot be changed later except by an admin. Enforced in the
+  database — `profiles.role` is locked against self-service updates (0003)
+- **Note:** the answer is held on the device until A6, because the profile row
+  cannot exist before there is a name (`profiles.full_name` is NOT NULL)
+- → A6, whichever card was picked
 
 ### A6 · Profile setup — `(auth)/profile-setup`
+- **Applies to:** every account, client and owner alike
 - **Contents:** full name (required), photo (optional), city
+- **Important:** this is where the profile row is created, with the role
+  chosen at A5
+- **States:** name empty (continue disabled) · saving · save failed with retry
 - → A7
 
 ### A7 · Permissions — `(auth)/permissions`
+- **Applies to:** every account, client and owner alike
 - **Contents:** two explanations shown before the OS prompt:
   - **Location** — "so we can show the car washes closest to you"
   - **Notifications** — "so we can tell you when your turn is coming"
 - **Actions:** "Allow" / "Later"
-- → the app
+- → client: the app | owner: O1
 
 ---
 
@@ -170,6 +183,8 @@ Request: location, car photos, service, time · live tracking · before/after ph
 # 3. Owner — `(owner)`
 
 ### O1 · Register the car wash — `(owner)/register`
+The owner arrives from A7 with a profile row already created, so this screen is
+only ever about the car wash, never about the person.
 Step by step: name and description · location on the map plus address · photos (3 minimum) ·
 number of bays · hours · documents (ID and business registration) · submit
 → O2
