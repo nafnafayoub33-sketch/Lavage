@@ -1,25 +1,70 @@
 /**
  * src/data/supabase/types.ts
  *
- * Generated database types. This is a placeholder until the Supabase project
- * exists — the schema itself already lives in
- * supabase/migrations/0001_init.sql.
+ * Database types.
  *
- * Regenerate with:
+ * These are hand-written for the tables and functions the app actually
+ * queries today, transcribed from supabase/migrations/*.sql. Once the
+ * Supabase project exists, replace the whole file with generated output:
  *
  *   npx supabase gen types typescript --project-id <ref> --schema public \
  *     > src/data/supabase/types.ts
  *
- * Do not hand-edit the generated output. Until then the client is typed
- * against an empty schema, which keeps `createClient<Database>()` honest
- * without pretending we know the row shapes.
+ * Anything not listed here simply is not queried yet. Add the table when the
+ * screen that needs it lands, or generate the file and stop hand-writing.
  */
+
+/** 0001_init.sql — create type user_role as enum ('admin', 'owner', 'client') */
+export type UserRole = 'admin' | 'owner' | 'client';
+
+/** 0001_init.sql — create table profiles */
+export type ProfileRow = {
+  id: string;
+  role: UserRole;
+  full_name: string;
+  phone: string | null;
+  avatar_url: string | null;
+  city: string | null;
+  no_show_count: number;
+  is_blocked: boolean;
+  created_at: string;
+};
+
+type ProfileInsert = {
+  id: string;
+  role?: UserRole;
+  full_name: string;
+  phone?: string | null;
+  avatar_url?: string | null;
+  city?: string | null;
+  no_show_count?: number;
+  is_blocked?: boolean;
+  created_at?: string;
+};
+
+type ProfileUpdate = Partial<ProfileInsert>;
+
 export type Database = {
   public: {
-    Tables: Record<string, never>;
+    Tables: {
+      profiles: {
+        Row: ProfileRow;
+        Insert: ProfileInsert;
+        Update: ProfileUpdate;
+        Relationships: [];
+      };
+    };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
+    Functions: {
+      /** 0002_is_phone_blocked.sql */
+      is_phone_blocked: {
+        Args: { p_phone: string };
+        Returns: boolean;
+      };
+    };
+    Enums: {
+      user_role: UserRole;
+    };
     CompositeTypes: Record<string, never>;
   };
 };
