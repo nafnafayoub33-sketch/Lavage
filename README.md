@@ -41,13 +41,19 @@ Layout follows `docs/ARCHITECTURE.md`:
 - `src/lib/` — i18n, formatters, the query client
 - `tests/` — queue math and usecases
 
-## State of the skeleton
+## What is built
 
-`app/index.tsx` is a smoke-test screen, not a screen from `docs/SCREENS.md`. It
-checks that the fonts load, the theme switches, the translations resolve and the
-language switch flips direction. It goes away when A1 (splash) lands.
+**A3 · phone**, **A4 · SMS code** and **A5 · account type**, with Supabase phone
+auth. `app/index.tsx` carries A1's routing decision (signed in → the app by role,
+otherwise → A3) without A1's logo screen.
 
-No feature screens exist yet. The route groups `(auth)`, `(client)`, `(owner)`
-and `(admin)` are empty placeholders.
+Everything else is a placeholder that names the screen it stands in for — A6, O1,
+C1, O3, D1. A2 (language) is not built, so the language follows the device locale
+for now, and appearance follows the system setting until C14 lands.
 
-There is no test runner yet — it gets added with the first queue usecase.
+**Phone auth needs an SMS provider** (Twilio, Vonage or MessageBird) configured in
+the Supabase dashboard under Authentication → Providers. Without it the code never
+arrives and A3 shows a generic error.
+
+There is no test runner yet — it gets added with the first queue usecase. The pure
+usecases under `src/core/usecases/` are written to be unit-tested the moment it does.

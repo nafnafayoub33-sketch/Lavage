@@ -6,13 +6,14 @@ One codebase → Android + iOS.
 
 | Layer | Choice | Why |
 |---|---|---|
-| App | **React Native + Expo (SDK 51+)** | one code base for both stores, OTA updates, no Mac needed for most of the dev cycle |
+| App | **React Native + Expo (SDK 57)** | one code base for both stores, OTA updates, no Mac needed for most of the dev cycle |
 | Language | **TypeScript (strict)** | required for a 3-role app of this size |
 | Navigation | expo-router | file-based, role-based route groups |
 | State / data | TanStack Query + Zustand | server cache separated from UI state |
 | Backend | **Supabase** (Postgres + Auth + Realtime + Storage + Edge Functions) | the queue needs realtime; RLS enforces the 3 roles at the DB level, not in the client |
 | Maps | react-native-maps | native map on both platforms |
 | Push | Expo Notifications | one API for FCM + APNs |
+| Auth | **Phone + SMS OTP** (Supabase phone auth) | everyone in Morocco has a number; no password to forget. Needs an SMS provider configured in the Supabase dashboard |
 | Payments | Phase 2 — CMI / PayZone / Naps wrapped behind `PaymentGateway` interface | never call a provider SDK directly from a screen |
 
 The whole data layer sits behind repositories (`src/data/repositories`). If Supabase is ever
@@ -59,6 +60,16 @@ money is always `int` centimes and only formatted at render time.
 
 ## Key flows
 
+**Sign-in (A3 → A4 → A5)**
+1. A3 takes the national number behind a fixed `+212`, and calls
+   `is_phone_blocked()` (0002) before spending an SMS on a blocked number
+2. `signInWithOtp` sends the code; A4 verifies it
+3. three wrong codes → 15-minute lockout, held on the device per number. This is
+   a UX guard — Supabase's own rate limiting is the actual brute-force defence
+4. after verification the profile is re-read: **no row = new user** (0001 creates
+   none, and `full_name` is NOT NULL) → A5, otherwise straight to the app by role
+5. A5's answer waits in `pendingRole` until A6/O1 can insert the profile row
+
 **Booking**
 1. client picks service → `bookWash` usecase → insert `bookings` (status `pending`)
 2. DB trigger assigns the daily `ticket_no`
@@ -95,7 +106,8 @@ client's `no_show_count` +1. At 3, booking is blocked for 48h.
 
 ## Before writing screens — decisions still open
 
-1. Login by **phone OTP** (SMS costs money) or email/password to start?
-2. Credit top-up in phase 1: manual (bank transfer, admin credits the account) or
+1. Credit top-up in phase 1: manual (bank transfer, admin credits the account) or
    card gateway right away? Manual is faster to ship and legally simpler.
-3. App name + brand colors.
+2. App name + brand colors. Placeholders in `app.config.ts` today: `Lavage` /
+   `lavage` / `com.lavage.app`. The bundle ID is permanent after the first store
+   submission — settle it before then.
