@@ -75,6 +75,43 @@ export type CarWashRow = {
   created_at: string;
 };
 
+/** 0001_init.sql — create type booking_status as enum (...) */
+export type BookingStatus =
+  | 'pending'
+  | 'in_progress'
+  | 'done'
+  | 'confirmed'
+  | 'cancelled_client'
+  | 'cancelled_owner'
+  | 'no_show';
+
+/** 0001_init.sql — create table bookings */
+export type BookingRow = {
+  id: string;
+  car_wash_id: string;
+  client_id: string;
+  vehicle_id: string | null;
+  service_id: string;
+  status: BookingStatus;
+  price: number;
+  payment_method: 'cash' | 'card' | 'wallet';
+  ticket_no: number;
+  estimated_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  confirmed_at: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  created_at: string;
+};
+
+/**
+ * The statuses that mean "this client is currently in a queue somewhere".
+ * 0001 enforces one at a time per client with a partial unique index, so a
+ * query filtered on these can safely expect at most one row.
+ */
+export const ACTIVE_BOOKING_STATUSES = ['pending', 'in_progress', 'done'] as const;
+
 export type Database = {
   public: {
     Tables: {
@@ -90,6 +127,25 @@ export type Database = {
         Update: Partial<CarWashRow>;
         Relationships: [];
       };
+      bookings: {
+        Row: BookingRow;
+        Insert: Omit<BookingRow, 'id' | 'ticket_no' | 'created_at'> & {
+          id?: string;
+          // assigned by the set_ticket_no trigger, never by the client
+          ticket_no?: number;
+          created_at?: string;
+        };
+        Update: Partial<BookingRow>;
+        Relationships: [
+          {
+            foreignKeyName: 'bookings_car_wash_id_fkey';
+            columns: ['car_wash_id'];
+            isOneToOne: false;
+            referencedRelation: 'car_washes';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -97,6 +153,26 @@ export type Database = {
       is_phone_blocked: {
         Args: { p_phone: string };
         Returns: boolean;
+      };
+      /** 0004_nearby_car_washes_price_and_open.sql — backs C1 */
+      nearby_car_washes: {
+        Args: { p_lat: number; p_lng: number; p_radius_m?: number };
+        Returns: {
+          id: string;
+          name: string;
+          address: string;
+          photos: string[];
+          latitude: number;
+          longitude: number;
+          distance_m: number;
+          rating_avg: number;
+          rating_count: number;
+          bays_count: number;
+          cars_ahead: number;
+          wait_minutes: number;
+          price_from: number | null;
+          is_open: boolean;
+        }[];
       };
     };
     Enums: {

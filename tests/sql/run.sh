@@ -35,5 +35,7 @@ for migration in "$ROOT"/supabase/migrations/*.sql; do
   run "$migration"
 done
 
-echo "--- assertions"
-psql -v ON_ERROR_STOP=1 -d "$DB" -f "$ROOT/tests/sql/rls.test.sql"
+for suite in "$ROOT"/tests/sql/*.test.sql; do
+  echo "--- $(basename "$suite")"
+  psql -v ON_ERROR_STOP=1 -d "$DB" -f "$suite"
+done

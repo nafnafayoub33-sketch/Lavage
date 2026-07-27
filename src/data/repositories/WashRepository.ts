@@ -7,6 +7,7 @@
  *
  * The rest of the wash surface arrives with O5/O6.
  */
+import type { NearbyWash } from '@/core/domain/CarWash';
 import { supabase } from '@/data/supabase/client';
 import type { WashStatus } from '@/data/supabase/types';
 
@@ -33,4 +34,51 @@ export async function getMyWashStatus(): Promise<AuthResult<WashStatus | null>> 
   }
 
   return { ok: true, value: data?.status ?? null };
+}
+
+/**
+ * C1 — approved washes within `radiusM` of a point.
+ *
+ * The RPC already drops anything out of credit and orders by distance, so
+ * this only renames columns into the domain shape. Sorting and filtering
+ * happen on what comes back; see src/core/usecases/sortWashes.ts.
+ */
+export async function getNearbyWashes({
+  latitude,
+  longitude,
+  radiusM,
+}: {
+  latitude: number;
+  longitude: number;
+  radiusM: number;
+}): Promise<AuthResult<NearbyWash[]>> {
+  const { data, error } = await supabase.rpc('nearby_car_washes', {
+    p_lat: latitude,
+    p_lng: longitude,
+    p_radius_m: radiusM,
+  });
+
+  if (error) {
+    return { ok: false, reason: error.code === undefined ? 'offline' : 'unknown' };
+  }
+
+  return {
+    ok: true,
+    value: (data ?? []).map((row) => ({
+      id: row.id,
+      name: row.name,
+      address: row.address,
+      photos: row.photos,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      distanceM: row.distance_m,
+      ratingAvg: Number(row.rating_avg),
+      ratingCount: row.rating_count,
+      baysCount: row.bays_count,
+      carsAhead: row.cars_ahead,
+      waitMinutes: row.wait_minutes,
+      priceFrom: row.price_from,
+      isOpen: row.is_open,
+    })),
+  };
 }
