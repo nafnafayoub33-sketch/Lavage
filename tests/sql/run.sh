@@ -35,7 +35,11 @@ for migration in "$ROOT"/supabase/migrations/*.sql; do
   run "$migration"
 done
 
+# Each suite runs inside its own transaction, which is then rolled back, so
+# suites cannot collide over fixtures — profiles.phone is unique, and two
+# suites picking the same test number would otherwise fail whichever ran
+# second. It also means the order of this loop carries no meaning.
 for suite in "$ROOT"/tests/sql/*.test.sql; do
   echo "--- $(basename "$suite")"
-  psql -v ON_ERROR_STOP=1 -d "$DB" -f "$suite"
+  psql -v ON_ERROR_STOP=1 --single-transaction -d "$DB" -f "$suite" -c 'rollback;'
 done

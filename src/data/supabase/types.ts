@@ -242,6 +242,23 @@ export type Database = {
           now_serving: number | null;
         }[];
       };
+      /** 0007_owner_queue.sql — backs O3 */
+      owner_queue: {
+        Args: { p_wash_id: string };
+        Returns: {
+          booking_id: string;
+          ticket_no: number;
+          status: BookingStatus;
+          price: number;
+          created_at: string;
+          started_at: string | null;
+          service_name: string;
+          service_minutes: number;
+          client_first_name: string;
+          client_phone: string | null;
+          vehicle_label: string | null;
+        }[];
+      };
     };
     Enums: {
       user_role: UserRole;

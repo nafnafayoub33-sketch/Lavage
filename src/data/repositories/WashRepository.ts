@@ -9,7 +9,7 @@
  */
 import type { NearbyWash } from '@/core/domain/CarWash';
 import { supabase } from '@/data/supabase/client';
-import type { WashStatus } from '@/data/supabase/types';
+import type { CarWashRow, WashStatus } from '@/data/supabase/types';
 
 import type { AuthResult } from './AuthRepository';
 
@@ -81,4 +81,24 @@ export async function getNearbyWashes({
       isOpen: row.is_open,
     })),
   };
+}
+
+/**
+ * The owner's own wash, in full — O3 needs the balance, the free quota and
+ * the open/closed switch. "public read approved" also admits
+ * owner_id = auth.uid(), so a pending or suspended wash is still visible to
+ * the person who owns it.
+ */
+export async function getMyWash(): Promise<AuthResult<CarWashRow | null>> {
+  const { data, error } = await supabase
+    .from('car_washes')
+    .select('*')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, reason: error.code === undefined ? 'offline' : 'unknown' };
+  }
+  return { ok: true, value: data };
 }

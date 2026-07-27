@@ -4,7 +4,7 @@
  * These return a key and its values, never a finished string — Arabic breaks
  * if a sentence is assembled by concatenation.
  */
-import { formatDistance, formatWait } from '@/lib/format';
+import { formatDistance, formatWait, maskPhone } from '@/lib/format';
 
 describe('formatDistance', () => {
   it('uses metres below a kilometre, rounded to 50', () => {
@@ -45,5 +45,21 @@ describe('formatWait', () => {
 
   it('never reports a negative wait', () => {
     expect(formatWait(-10)).toEqual({ key: 'wash.waitMinutes', params: { value: '0' } });
+  });
+});
+
+describe('maskPhone', () => {
+  it('keeps the country code and the last two digits', () => {
+    const masked = maskPhone('+212612345678');
+    expect(masked.startsWith('+2126')).toBe(true);
+    expect(masked.endsWith('78')).toBe(true);
+  });
+
+  it('hides the middle', () => {
+    expect(maskPhone('+212612345678')).not.toContain('12345');
+  });
+
+  it('leaves something too short to mask alone', () => {
+    expect(maskPhone('123')).toBe('123');
   });
 });

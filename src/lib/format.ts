@@ -59,3 +59,19 @@ export function formatWait(minutes: number): Formatted {
     params: { hours: String(hours), minutes: String(rest) },
   };
 }
+
+/**
+ * A client's number as the owner should see it — enough to recognise, not
+ * enough to copy down. O4 asks for a masked number; the dialler still gets
+ * the real one, because "Call" has to work.
+ */
+export function maskPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 4) return phone;
+
+  const tail = digits.slice(-2);
+  // Keep the country code and the leading mobile digit legible.
+  const head = phone.startsWith('+') ? phone.slice(0, 5) : digits.slice(0, 2);
+
+  return `${head}\u2022\u2022 \u2022\u2022 \u2022\u2022 ${tail}`;
+}
