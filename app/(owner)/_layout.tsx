@@ -25,7 +25,7 @@ export default function OwnerLayout() {
       }}
     >
       <Tabs.Screen name="queue" options={{ title: t('owner.queue') }} />
-      <Tabs.Screen name="wash" options={{ title: t('owner.myWash') }} />
+      <Tabs.Screen name="wash" options={{ title: t("owner.myWash") }} />
       <Tabs.Screen name="credit" options={{ title: t('owner.balance') }} />
       <Tabs.Screen name="account" options={{ title: t('account.title') }} />
 

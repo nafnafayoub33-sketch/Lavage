@@ -139,6 +139,40 @@ export type BookingRow = {
  */
 export const ACTIVE_BOOKING_STATUSES = ['pending', 'in_progress', 'done'] as const;
 
+/** 0009_manual_topup.sql */
+export type TopupStatus = 'pending' | 'approved' | 'rejected';
+
+export type TopupRequestRow = {
+  id: string;
+  car_wash_id: string;
+  amount: number;
+  reference: string;
+  receipt_url: string | null;
+  status: TopupStatus;
+  admin_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+};
+
+/** 0001_init.sql — create table credit_transactions */
+export type CreditTransactionRow = {
+  id: string;
+  car_wash_id: string;
+  type: 'topup' | 'charge' | 'refund' | 'bonus';
+  amount: number;
+  balance_after: number;
+  booking_id: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+/** 0001_init.sql — create table platform_settings */
+export type PlatformSettingRow = {
+  key: string;
+  value: unknown;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -169,9 +203,41 @@ export type Database = {
           },
         ];
       };
+      topup_requests: {
+        Row: TopupRequestRow;
+        // status and admin_note are refused by RLS on insert; the owner only
+        // ever files a pending request.
+        Insert: {
+          car_wash_id: string;
+          amount: number;
+          reference: string;
+          receipt_url?: string | null;
+          id?: string;
+        };
+        Update: Partial<TopupRequestRow>;
+        Relationships: [];
+      };
+      credit_transactions: {
+        Row: CreditTransactionRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      platform_settings: {
+        Row: PlatformSettingRow;
+        Insert: PlatformSettingRow;
+        Update: Partial<PlatformSettingRow>;
+        Relationships: [];
+      };
       services: {
         Row: ServiceRow;
-        Insert: Omit<ServiceRow, 'id'> & { id?: string };
+        // vehicle_type and is_active have defaults in 0001, so they are
+        // optional on insert even though the column is NOT NULL.
+        Insert: Omit<ServiceRow, 'id' | 'vehicle_type' | 'is_active'> & {
+          id?: string;
+          vehicle_type?: string;
+          is_active?: boolean;
+        };
         Update: Partial<ServiceRow>;
         Relationships: [
           {
@@ -245,6 +311,15 @@ export type Database = {
           wait_minutes: number;
           now_serving: number | null;
         }[];
+      };
+      /** 0009_manual_topup.sql — D8 approves a bank transfer */
+      approve_topup: {
+        Args: { p_request_id: string; p_note?: string | null };
+        Returns: undefined;
+      };
+      reject_topup: {
+        Args: { p_request_id: string; p_note: string };
+        Returns: undefined;
       };
       /** 0007_owner_queue.sql — backs O3 */
       owner_queue: {
