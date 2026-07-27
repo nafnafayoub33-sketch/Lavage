@@ -7,6 +7,7 @@
 import { supabase } from '@/data/supabase/client';
 import {
   ACTIVE_BOOKING_STATUSES,
+  type ArrivalStatus,
   type BookingStatus,
 } from '@/data/supabase/types';
 
@@ -22,6 +23,8 @@ export type ActiveBooking = {
 /** Everything C6 puts on screen. */
 export type CurrentBooking = ActiveBooking & {
   price: number;
+  /** null when the client has said nothing */
+  arrival: ArrivalStatus | null;
   cancelledAt: string | null;
   cancelReason: string | null;
   serviceName: string;
@@ -87,7 +90,7 @@ export async function getCurrentBooking(): Promise<AuthResult<CurrentBooking | n
     // string at compile time, and concatenating it widens it to `string`,
     // which collapses the result to an error type.
     .select(
-      'id, ticket_no, status, price, cancelled_at, cancel_reason, car_wash_id, services(name, duration_min), car_washes(name, phone, address)',
+      'id, ticket_no, status, arrival, price, cancelled_at, cancel_reason, car_wash_id, services(name, duration_min), car_washes(name, phone, address)',
     )
     .in('status', [...ACTIVE_BOOKING_STATUSES, 'cancelled_owner'])
     .order('created_at', { ascending: false })
@@ -106,6 +109,7 @@ export async function getCurrentBooking(): Promise<AuthResult<CurrentBooking | n
       ticketNo: data.ticket_no,
       status: data.status,
       price: data.price,
+      arrival: data.arrival,
       cancelledAt: data.cancelled_at,
       cancelReason: data.cancel_reason,
       washId: data.car_wash_id,
@@ -160,6 +164,27 @@ export async function cancelBooking(bookingId: string): Promise<AuthResult<void>
   const { error } = await supabase
     .from('bookings')
     .update({ status: 'cancelled_client', cancelled_at: new Date().toISOString() })
+    .eq('id', bookingId);
+
+  if (error) {
+    return { ok: false, reason: error.code === undefined ? 'offline' : 'unknown' };
+  }
+  return { ok: true, value: undefined };
+}
+
+/**
+ * C6 — the client says whether they are coming.
+ *
+ * 0008 lets only the client write this column, and only on their own
+ * booking; the owner reads it back through owner_queue.
+ */
+export async function setArrival(
+  bookingId: string,
+  arrival: ArrivalStatus,
+): Promise<AuthResult<void>> {
+  const { error } = await supabase
+    .from('bookings')
+    .update({ arrival })
     .eq('id', bookingId);
 
   if (error) {

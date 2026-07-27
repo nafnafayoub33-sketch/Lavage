@@ -1,4 +1,4 @@
-# Lavage Platform — Architecture
+# Lavajna Platform — Architecture
 
 One codebase → Android + iOS.
 
@@ -22,7 +22,7 @@ swapped out, screens don't change.
 ## Folder structure
 
 ```
-lavage/
+lavajna/
 ├─ app/                          # expo-router (routes only, no logic)
 │  ├─ (auth)/                    # login, otp, role picker
 │  ├─ (client)/                  # map, wash detail, booking, my queue, history

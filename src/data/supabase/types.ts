@@ -108,6 +108,9 @@ export type BookingStatus =
   | 'cancelled_owner'
   | 'no_show';
 
+/** 0008 — the client's word about whether they are coming. Null = not said. */
+export type ArrivalStatus = 'on_the_way' | 'arrived';
+
 /** 0001_init.sql — create table bookings */
 export type BookingRow = {
   id: string;
@@ -116,6 +119,7 @@ export type BookingRow = {
   vehicle_id: string | null;
   service_id: string;
   status: BookingStatus;
+  arrival: ArrivalStatus | null;
   price: number;
   payment_method: 'cash' | 'card' | 'wallet';
   ticket_no: number;
@@ -249,6 +253,7 @@ export type Database = {
           booking_id: string;
           ticket_no: number;
           status: BookingStatus;
+          arrival: ArrivalStatus | null;
           price: number;
           created_at: string;
           started_at: string | null;
@@ -263,6 +268,7 @@ export type Database = {
     Enums: {
       user_role: UserRole;
       wash_status: WashStatus;
+      arrival_status: ArrivalStatus;
     };
     CompositeTypes: Record<string, never>;
   };

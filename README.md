@@ -1,4 +1,4 @@
-# Lavage
+# Lavajna
 
 A car wash marketplace for Morocco — client, owner and admin in one app.
 Android and iOS from one codebase.

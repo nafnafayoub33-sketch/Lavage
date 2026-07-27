@@ -18,11 +18,11 @@
 import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { isUrgent } from '@/core/usecases/turnState';
-import { cancelBooking } from '@/data/repositories/BookingRepository';
+import { cancelBooking, setArrival } from '@/data/repositories/BookingRepository';
 import { useCurrentTurn } from '@/features/booking/useCurrentTurn';
 import { useOffline } from '@/hooks/useOffline';
 import { formatWait } from '@/lib/format';
@@ -31,7 +31,7 @@ import { Banner } from '@/ui/Banner';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
 import { SkeletonList } from '@/ui/Skeleton';
-import { numeric, radii, spacing, type } from '@/ui/theme';
+import { hitSize, numeric, radii, spacing, type } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
 export default function MyTurnScreen() {
@@ -77,6 +77,21 @@ export default function MyTurnScreen() {
       { text: t('common.later'), style: 'cancel' },
       { text: t('common.confirm'), style: 'destructive', onPress: () => void performCancel() },
     ]);
+  };
+
+  /**
+   * Telling the wash you are coming. Fire and forget by design: this is a
+   * courtesy, and blocking the screen on it would make it feel like a
+   * commitment.
+   */
+  const onArrival = (arrival: 'on_the_way' | 'arrived') => {
+    if (turn.booking === null) return;
+
+    void setArrival(turn.booking.id, arrival)
+      .then((result) => {
+        if (result.ok) turn.refetch();
+      })
+      .catch((error: unknown) => console.error('[C6] could not set arrival', error));
   };
 
   const call = () => {
@@ -125,6 +140,7 @@ export default function MyTurnScreen() {
             onCall={call}
             onDirections={directions}
             onBrowse={() => router.replace('/(client)/home')}
+            onArrival={onArrival}
           />
         )}
       </ScrollView>
@@ -140,6 +156,7 @@ function Content({
   onCall,
   onDirections,
   onBrowse,
+  onArrival,
 }: {
   turn: ReturnType<typeof useCurrentTurn>;
   urgent: boolean;
@@ -148,6 +165,7 @@ function Content({
   onCall: () => void;
   onDirections: () => void;
   onBrowse: () => void;
+  onArrival: (arrival: 'on_the_way' | 'arrived') => void;
 }) {
   const { t } = useTranslation();
   const { c } = useTheme();
@@ -225,6 +243,22 @@ function Content({
         <Detail label={t('booking.price')} value={formatDH(booking.price)} isNumeric />
       </View>
 
+      {/* Only worth asking while they still have somewhere to be. */}
+      {state.kind === 'waiting' || state.kind === 'next' ? (
+        <View style={styles.arrival}>
+          <ArrivalChoice
+            label={t('booking.imOnTheWay')}
+            selected={booking.arrival === 'on_the_way'}
+            onPress={() => onArrival('on_the_way')}
+          />
+          <ArrivalChoice
+            label={t('booking.iArrived')}
+            selected={booking.arrival === 'arrived'}
+            onPress={() => onArrival('arrived')}
+          />
+        </View>
+      ) : null}
+
       <View style={styles.actions}>
         <Button label={t('common.directions')} variant="secondary" onPress={onDirections} />
         {booking.washPhone !== null && booking.washPhone !== '' ? (
@@ -287,8 +321,45 @@ function Detail({
   );
 }
 
+function ArrivalChoice({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const { c } = useTheme();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={[
+        styles.arrivalChip,
+        {
+          backgroundColor: selected ? c.primary : c.surface,
+          borderColor: selected ? c.primary : c.line,
+        },
+      ]}
+    >
+      <Text style={[type.label, { color: selected ? c.onPrimary : c.text }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  arrival: { flexDirection: 'row', columnGap: spacing.sm, justifyContent: 'center' },
+  arrivalChip: {
+    minHeight: hitSize.min,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   content: {
     flexGrow: 1,
     padding: spacing.xl,

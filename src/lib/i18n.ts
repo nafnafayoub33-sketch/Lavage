@@ -88,6 +88,8 @@ const ar = {
     confirmDone: 'واش سالى الغسيل؟',
     rate: 'قيّم الخدمة', comment: 'تعليق (اختياري)',
     confirmAndRate: 'أكد وقيّم', problem: 'كاين مشكل',
+    imOnTheWay: 'أنا فالطريق', iArrived: 'وصلت',
+    notSaid: 'ما قالش',
   },
   wash: {
     services: 'الخدمات والأثمنة', hours: 'أوقات الخدمة',
@@ -218,6 +220,8 @@ const fr: typeof ar = {
     confirmDone: 'Le lavage est terminé ?',
     rate: 'Note le service', comment: 'Commentaire (optionnel)',
     confirmAndRate: 'Confirmer et noter', problem: 'Il y a un problème',
+    imOnTheWay: 'Je suis en route', iArrived: 'Je suis arrivé',
+    notSaid: 'pas indiqué',
   },
   wash: {
     services: 'Services et prix', hours: 'Horaires',
@@ -349,6 +353,8 @@ const en: typeof ar = {
     confirmDone: 'Is the wash finished?',
     rate: 'Rate the service', comment: 'Comment (optional)',
     confirmAndRate: 'Confirm and rate', problem: 'Something\u2019s wrong',
+    imOnTheWay: 'I\u2019m on the way', iArrived: 'I\u2019ve arrived',
+    notSaid: 'not said',
   },
   wash: {
     services: 'Services & prices', hours: 'Hours',

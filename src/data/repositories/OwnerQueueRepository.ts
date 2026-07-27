@@ -9,7 +9,7 @@
  * changes are ordinary updates and stay subject to RLS.
  */
 import { supabase } from '@/data/supabase/client';
-import type { BookingRow, BookingStatus } from '@/data/supabase/types';
+import type { ArrivalStatus, BookingRow, BookingStatus } from '@/data/supabase/types';
 
 import type { AuthResult } from './AuthRepository';
 
@@ -17,6 +17,8 @@ export type QueueRow = {
   bookingId: string;
   ticketNo: number;
   status: BookingStatus;
+  /** null when the client has said nothing — a real third state */
+  arrival: ArrivalStatus | null;
   price: number;
   createdAt: string;
   startedAt: string | null;
@@ -41,6 +43,7 @@ export async function getOwnerQueue(washId: string): Promise<AuthResult<QueueRow
       bookingId: row.booking_id,
       ticketNo: row.ticket_no,
       status: row.status,
+      arrival: row.arrival,
       price: row.price,
       createdAt: row.created_at,
       startedAt: row.started_at,

@@ -249,6 +249,18 @@ function Row({
           <Text style={[type.caption, { color: c.textMuted }]} numberOfLines={1}>
             {row.vehicleLabel ?? row.clientFirstName}
           </Text>
+          {/* The client's own word (0008). Absent means they have not said,
+              which is different from "not coming" and is left blank. */}
+          {row.arrival !== null ? (
+            <Text
+              style={[
+                type.caption,
+                { color: row.arrival === 'arrived' ? c.ok : c.warn },
+              ]}
+            >
+              {row.arrival === 'arrived' ? t('owner.arrived') : t('owner.onTheWay')}
+            </Text>
+          ) : null}
           {row.clientPhone !== null ? (
             <Text style={[type.caption, numeric, { color: c.textFaint }]}>
               {maskPhone(row.clientPhone)}
