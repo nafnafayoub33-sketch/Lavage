@@ -75,6 +75,17 @@ export type CarWashRow = {
   created_at: string;
 };
 
+/** 0001_init.sql — create table services */
+export type ServiceRow = {
+  id: string;
+  car_wash_id: string;
+  name: string;
+  price: number;
+  duration_min: number;
+  vehicle_type: string;
+  is_active: boolean;
+};
+
 /** 0001_init.sql — create type booking_status as enum (...) */
 export type BookingStatus =
   | 'pending'
@@ -127,6 +138,20 @@ export type Database = {
         Update: Partial<CarWashRow>;
         Relationships: [];
       };
+      services: {
+        Row: ServiceRow;
+        Insert: Omit<ServiceRow, 'id'> & { id?: string };
+        Update: Partial<ServiceRow>;
+        Relationships: [
+          {
+            foreignKeyName: 'services_car_wash_id_fkey';
+            columns: ['car_wash_id'];
+            isOneToOne: false;
+            referencedRelation: 'car_washes';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       bookings: {
         Row: BookingRow;
         Insert: Omit<BookingRow, 'id' | 'ticket_no' | 'created_at'> & {
@@ -142,6 +167,13 @@ export type Database = {
             columns: ['car_wash_id'];
             isOneToOne: false;
             referencedRelation: 'car_washes';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bookings_service_id_fkey';
+            columns: ['service_id'];
+            isOneToOne: false;
+            referencedRelation: 'services';
             referencedColumns: ['id'];
           },
         ];
@@ -172,6 +204,15 @@ export type Database = {
           wait_minutes: number;
           price_from: number | null;
           is_open: boolean;
+        }[];
+      };
+      /** 0005_queue_state_security_definer.sql — C6 */
+      my_queue_position: {
+        Args: { p_booking_id: string };
+        Returns: {
+          cars_ahead: number;
+          wait_minutes: number;
+          now_serving: number | null;
         }[];
       };
     };

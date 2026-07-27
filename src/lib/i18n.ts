@@ -70,6 +70,9 @@ const ar = {
     youAreUp: 'دورك دابا',
     washing: 'الطوموبيل ديالك دابا فالغسيل',
     noBooking: 'ماعندك حتى نوبة دابا',
+    nowServing: 'دابا كيغسلو رقم {{number}}',
+    cancelledByOwner: 'اللافاج لغى الحجز ديالك',
+    findAnother: 'قلب على لافاج آخر',
     banner: 'عندك نوبة فـ{{wash}} · رقم {{number}}',
   },
   booking: {
@@ -190,6 +193,9 @@ const fr: typeof ar = {
     youAreUp: 'C\u2019est ton tour',
     washing: 'Ta voiture est en cours de lavage',
     noBooking: 'Tu n\u2019as pas de tour en cours',
+    nowServing: 'En cours : n\u00b0 {{number}}',
+    cancelledByOwner: 'Le lavage a annulé ta réservation',
+    findAnother: 'Trouver un autre lavage',
     banner: 'Tu as un tour chez {{wash}} · n° {{number}}',
   },
   booking: {
@@ -311,6 +317,9 @@ const en: typeof ar = {
     youAreUp: 'You\u2019re up',
     washing: 'Your car is being washed',
     noBooking: 'You don\u2019t have a turn right now',
+    nowServing: 'Now washing no. {{number}}',
+    cancelledByOwner: 'The car wash cancelled your booking',
+    findAnother: 'Find another car wash',
     banner: 'You have a place at {{wash}} · no. {{number}}',
   },
   booking: {
