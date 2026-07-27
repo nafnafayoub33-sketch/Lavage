@@ -50,25 +50,37 @@ export default function OtpScreen() {
 
   const blocked = lockout.locked || verifying || offline || phoneE164 === null;
 
+  /**
+   * Never rejects. The lockout writes to storage and resolveLanding hits the
+   * network; either throwing used to leave `verifying` true forever, which
+   * disables the code boxes and the resend button both.
+   */
   const submit = async (value: string) => {
     if (phoneE164 === null) return;
 
     setVerifying(true);
     setFailure(null);
 
-    const result = await verifyOtp(phoneE164, value);
+    try {
+      const result = await verifyOtp(phoneE164, value);
 
-    if (!result.ok) {
+      if (!result.ok) {
+        setVerifying(false);
+        setFailure(result.reason);
+        setCode('');
+        // An expired code is not a wrong guess — do not spend an attempt on it.
+        if (result.reason === 'invalid_code') await lockout.fail();
+        return;
+      }
+
+      await lockout.reset();
+      await routeOnward();
+    } catch (error) {
+      console.error('[A4] verification failed unexpectedly', error);
       setVerifying(false);
-      setFailure(result.reason);
+      setFailure('unknown');
       setCode('');
-      // An expired code is not a wrong guess — do not spend an attempt on it.
-      if (result.reason === 'invalid_code') await lockout.fail();
-      return;
     }
-
-    await lockout.reset();
-    await routeOnward();
   };
 
   /**
@@ -104,21 +116,27 @@ export default function OtpScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, blocked]);
 
+  /** Never rejects — see submit(). */
   const onResend = async () => {
     if (phoneE164 === null) return;
 
     setFailure(null);
     setCode('');
 
-    const result = await resendOtp(phoneE164);
-    if (!result.ok) {
-      setFailure(result.reason);
-      return;
-    }
+    try {
+      const result = await resendOtp(phoneE164);
+      if (!result.ok) {
+        setFailure(result.reason);
+        return;
+      }
 
-    // A fresh code deserves a fresh set of attempts.
-    await lockout.reset();
-    countdown.restart();
+      // A fresh code deserves a fresh set of attempts.
+      await lockout.reset();
+      countdown.restart();
+    } catch (error) {
+      console.error('[A4] resend failed unexpectedly', error);
+      setFailure('unknown');
+    }
   };
 
   const message = offline

@@ -37,10 +37,15 @@ export default function PermissionsScreen() {
   useEffect(() => {
     let cancelled = false;
 
-    getMyProfile().then((result) => {
-      if (cancelled) return;
-      if (result.ok && result.value !== null) setRole(result.value.role);
-    });
+    getMyProfile()
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok && result.value !== null) setRole(result.value.role);
+      })
+      // Leaves role null, which sends the user to the client app. An owner
+      // landing there is recoverable — A1 re-decides on the next launch — and
+      // it beats stranding everyone on a screen that will not advance.
+      .catch((error: unknown) => console.error('[A7] could not read the profile', error));
 
     return () => {
       cancelled = true;
@@ -53,6 +58,7 @@ export default function PermissionsScreen() {
     router.replace(role === 'owner' ? '/(owner)/register' : '/(client)/home');
   };
 
+  /** Never rejects — the OS prompts are already individually guarded. */
   const onAllow = async () => {
     setAsking(true);
 
@@ -61,9 +67,14 @@ export default function PermissionsScreen() {
     //
     // A denial is not an error. The user said no, the app continues, and the
     // screens that need the permission handle its absence — C1 has a
-    // "location off" state for exactly this.
-    await Location.requestForegroundPermissionsAsync().catch(() => undefined);
-    await Notifications.requestPermissionsAsync().catch(() => undefined);
+    // "location off" state for exactly this. A module that fails to load at
+    // all is logged, because that one is a bug rather than a choice.
+    await Location.requestForegroundPermissionsAsync().catch((error: unknown) =>
+      console.error('[A7] location permission request failed', error),
+    );
+    await Notifications.requestPermissionsAsync().catch((error: unknown) =>
+      console.error('[A7] notification permission request failed', error),
+    );
 
     setAsking(false);
     leave();

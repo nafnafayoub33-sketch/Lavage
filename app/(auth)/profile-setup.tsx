@@ -42,46 +42,63 @@ export default function ProfileSetupScreen() {
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<AuthFailure | null>(null);
 
-  // The store is memory-only until something reads storage; a cold start
-  // straight onto this screen would otherwise see no role at all.
+  // A cold start straight onto this screen has nothing in memory, so fill in
+  // from storage. hydrate() never overwrites what is already there, so
+  // arriving from A5 keeps the role just chosen.
   useEffect(() => {
-    hydrate().finally(() => setHydrated(true));
+    hydrate()
+      .catch((error: unknown) => console.error('[A6] could not read the pending role', error))
+      .finally(() => setHydrated(true));
   }, [hydrate]);
 
   const name = fullName.trim();
   const canContinue = name.length > 0 && !offline;
 
+  /**
+   * Never rejects. It is handed to a `() => void` prop, so anything thrown
+   * here — a session read, a storage write — would otherwise disappear with
+   * the screen simply not advancing.
+   */
   const onSave = async () => {
     if (!canContinue || role === null) return;
-
-    const userId = await getSessionUserId();
-    if (userId === null) {
-      // The session went away mid-signup. Start over rather than guess.
-      router.replace('/(auth)/phone');
-      return;
-    }
 
     setSaving(true);
     setFailure(null);
 
-    const result = await createProfile({
-      userId,
-      role,
-      fullName: name,
-      city: city.trim() === '' ? null : city.trim(),
-    });
+    try {
+      const userId = await getSessionUserId();
+      if (userId === null) {
+        // The session went away mid-signup. Start over rather than guess.
+        router.replace('/(auth)/phone');
+        return;
+      }
 
-    setSaving(false);
+      const result = await createProfile({
+        userId,
+        role,
+        fullName: name,
+        city: city.trim() === '' ? null : city.trim(),
+      });
 
-    if (!result.ok) {
-      setFailure(result.reason);
-      return;
+      if (!result.ok) {
+        setFailure(result.reason);
+        return;
+      }
+
+      // The role has done its job and now lives in the database, where 0003
+      // locks it. A failure to drop the local copy is not worth blocking on:
+      // a stale pendingRole loses to a real profile row everywhere it is read.
+      await clearRole().catch((error: unknown) =>
+        console.error('[A6] profile saved but the pending role survived', error),
+      );
+
+      router.replace('/(auth)/permissions');
+    } catch (error) {
+      console.error('[A6] could not save the profile', error);
+      setFailure('unknown');
+    } finally {
+      setSaving(false);
     }
-
-    // The role has done its job and now lives in the database, where 0003
-    // locks it. Keeping a stale copy on the device invites disagreement.
-    await clearRole();
-    router.replace('/(auth)/permissions');
   };
 
   if (!hydrated) return null;

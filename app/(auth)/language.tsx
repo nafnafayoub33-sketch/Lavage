@@ -16,6 +16,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LANGS, setLanguage, type Lang } from '@/lib/i18n';
+import { Banner } from '@/ui/Banner';
 import { hitSize, radii, spacing, type } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
@@ -31,12 +32,27 @@ export default function LanguageScreen() {
   const { c } = useTheme();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
 
+  /**
+   * Never rejects. setLanguage() writes to storage, and a throw here used to
+   * strand the screen: no navigation, and `busy` stuck true with all three
+   * buttons disabled.
+   */
   const onPick = async (lng: Lang) => {
     if (busy) return;
     setBusy(true);
+    setFailed(false);
 
-    const { restartNeeded } = await setLanguage(lng);
+    let restartNeeded = false;
+    try {
+      ({ restartNeeded } = await setLanguage(lng));
+    } catch (error) {
+      console.error('[A2] could not save the language choice', error);
+      setFailed(true);
+      setBusy(false);
+      return;
+    }
 
     // On a real build an RTL switch restarts the app and this line is never
     // reached. When it is, say so rather than leaving a half-mirrored screen
@@ -52,6 +68,8 @@ export default function LanguageScreen() {
     <SafeAreaView style={[styles.fill, { backgroundColor: c.bg }]}>
       <View style={styles.content}>
         <Text style={[type.title, { color: c.text }]}>{t('auth.language')}</Text>
+
+        {failed ? <Banner message={t('error.generic')} /> : null}
 
         <View style={styles.choices}>
           {LANGS.map((lng) => (
