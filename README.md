@@ -35,7 +35,7 @@ Android has no built-in map provider. iOS uses Apple Maps and needs no key.
 5. **Restrict the key immediately** — it ships inside the APK, so restriction is
    what protects it, not secrecy:
    - *Application restrictions* → **Android apps** → add package name
-     `com.lavage.app` plus your signing SHA-1.
+     `com.lavajna.app` plus your signing SHA-1.
    - *API restrictions* → **Restrict key** → Maps SDK for Android.
 6. Get the SHA-1 you need in step 5:
    - EAS builds: `npx eas credentials` → Android → the build profile → it prints

@@ -86,6 +86,18 @@ export type ServiceRow = {
   is_active: boolean;
 };
 
+/**
+ * 0006_queue_events.sql — one summary row per wash, so Realtime can tell a
+ * client the queue moved. RLS on bookings makes that impossible to learn
+ * from bookings directly.
+ */
+export type QueueEventRow = {
+  car_wash_id: string;
+  cars_waiting: number;
+  now_serving: number | null;
+  updated_at: string;
+};
+
 /** 0001_init.sql — create type booking_status as enum (...) */
 export type BookingStatus =
   | 'pending'
@@ -137,6 +149,21 @@ export type Database = {
         Insert: Omit<CarWashRow, 'id' | 'created_at'> & { id?: string; created_at?: string };
         Update: Partial<CarWashRow>;
         Relationships: [];
+      };
+      queue_events: {
+        Row: QueueEventRow;
+        // Written only by the refresh_queue_event trigger; no client inserts.
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: 'queue_events_car_wash_id_fkey';
+            columns: ['car_wash_id'];
+            isOneToOne: true;
+            referencedRelation: 'car_washes';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       services: {
         Row: ServiceRow;

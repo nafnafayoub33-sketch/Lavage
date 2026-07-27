@@ -108,6 +108,6 @@ client's `no_show_count` +1. At 3, booking is blocked for 48h.
 
 1. Credit top-up in phase 1: manual (bank transfer, admin credits the account) or
    card gateway right away? Manual is faster to ship and legally simpler.
-2. App name + brand colors. Placeholders in `app.config.ts` today: `Lavage` /
-   `lavage` / `com.lavage.app`. The bundle ID is permanent after the first store
-   submission — settle it before then.
+2. Brand colors. The app name is settled: **Lavajna** / `lavajna` /
+   `com.lavajna.app`. The bundle ID is permanent after the first store
+   submission, so it should not move again.

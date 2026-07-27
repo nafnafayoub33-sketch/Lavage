@@ -11,9 +11,9 @@ import type { ExpoConfig } from 'expo/config';
  * protects the data, not secrecy of this key.
  */
 const config: ExpoConfig = {
-  name: 'Lavage',
-  slug: 'lavage',
-  scheme: 'lavage',
+  name: 'Lavajna',
+  slug: 'lavajna',
+  scheme: 'lavajna',
   version: '1.0.0',
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
@@ -21,11 +21,11 @@ const config: ExpoConfig = {
 
   ios: {
     supportsTablet: false,
-    bundleIdentifier: 'com.lavage.app',
+    bundleIdentifier: 'com.lavajna.app',
   },
 
   android: {
-    package: 'com.lavage.app',
+    package: 'com.lavajna.app',
     config: {
       // C1's map. Android has no built-in map provider, so without this the
       // MapView renders as a blank rectangle and nothing in the build says

@@ -21,6 +21,11 @@ create or replace function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
 $$;
 
+-- Supabase ships this publication; Realtime streams whatever is added to it.
+-- Creating it here means 0006's ALTER PUBLICATION runs under test rather than
+-- being skipped, so a table that never reaches Realtime is a test failure.
+create publication supabase_realtime;
+
 -- Roles live in the cluster, not the database, so they survive a dropped test
 -- database and must be created conditionally for a re-run to work.
 do $$
