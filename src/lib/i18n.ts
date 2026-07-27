@@ -50,7 +50,11 @@ const ar = {
     roleClient: 'عندي طوموبيل', roleOwner: 'عندي لافاج',
     roleWarn: 'ما تقدرش تبدل هاد الاختيار من بعد إلا عن طريق الإدارة.',
     nameTitle: 'شنو سميتك؟', namePlaceholder: 'الاسم الكامل',
+    cityPlaceholder: 'المدينة',
+    permTitle: 'قبل ما نبداو',
+    permLocationTitle: 'الموقع',
     permLocation: 'باش نوريو ليك اللافاجات القريبة ليك',
+    permNotificationsTitle: 'الإشعارات',
     permNotifications: 'باش نعيطو ليك ملي توصل نوبتك',
   },
   queue: {
@@ -154,7 +158,11 @@ const fr: typeof ar = {
     roleTitle: 'Tu es…',
     roleClient: 'J\u2019ai une voiture', roleOwner: 'J\u2019ai un lavage',
     nameTitle: 'Comment tu t\u2019appelles ?', namePlaceholder: 'Nom complet',
+    cityPlaceholder: 'Ville',
+    permTitle: 'Avant de commencer',
+    permLocationTitle: 'Localisation',
     permLocation: 'Pour te montrer les lavages les plus proches',
+    permNotificationsTitle: 'Notifications',
     permNotifications: 'Pour te prévenir quand ton tour arrive',
   },
   queue: {
@@ -259,7 +267,11 @@ const en: typeof ar = {
     roleTitle: 'You are…',
     roleClient: 'I have a car', roleOwner: 'I own a car wash',
     nameTitle: 'What\u2019s your name?', namePlaceholder: 'Full name',
+    cityPlaceholder: 'City',
+    permTitle: 'Before we start',
+    permLocationTitle: 'Location',
     permLocation: 'So we can show the car washes closest to you',
+    permNotificationsTitle: 'Notifications',
     permNotifications: 'So we can tell you when your turn comes',
   },
   queue: {
@@ -410,6 +422,15 @@ export async function setLanguage(lng: Lang): Promise<LanguageChange> {
 }
 
 export const currentLang = () => i18n.language as Lang;
+
+/**
+ * A2 is "first launch only". There is no separate flag for that: a stored
+ * language only ever gets written by setLanguage(), so its absence is exactly
+ * "the user has never chosen". Changing the language later is C14.
+ */
+export async function hasChosenLanguage(): Promise<boolean> {
+  return (await AsyncStorage.getItem(STORAGE_KEY)) !== null;
+}
 
 /**
  * Money is stored in centimes everywhere. Format only at render time.

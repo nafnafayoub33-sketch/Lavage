@@ -1,23 +1,26 @@
 /**
  * app/index.tsx
  *
- * A1's decision — "not signed in -> A2 | client -> home | owner -> queue" —
- * without A1's visual. The logo screen and A2 (language) are not built yet,
- * so this sends new users straight to A3.
+ * A1's decision — "not signed in -> A2 | client -> home | approved owner ->
+ * queue | pending owner -> O2" — without A1's logo.
  *
- * This replaced the skeleton smoke-test screen, as the README said it would.
- * Language now follows the device locale until A2 lands; appearance follows
- * the system setting until C14 lands.
+ * A2 only appears once: a stored language is written the first time the user
+ * picks one, so its absence is what "first launch" means.
  */
 import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { resolvePostAuthDestination, type PostAuthDestination } from '@/core/usecases/postAuthRoute';
-import { getMyProfile, getSessionUserId, signOut } from '@/data/repositories/AuthRepository';
+import { signOut, getSessionUserId } from '@/data/repositories/AuthRepository';
+import { landingHref, resolveLanding } from '@/features/auth/resolveLanding';
+import { hasChosenLanguage } from '@/lib/i18n';
 import { useTheme } from '@/ui/useTheme';
 
-type Landing = { kind: 'loading' } | { kind: 'auth' } | { kind: 'signedIn'; to: PostAuthDestination };
+type Landing =
+  | { kind: 'loading' }
+  | { kind: 'language' }
+  | { kind: 'auth' }
+  | { kind: 'signedIn'; href: ReturnType<typeof landingHref> };
 
 export default function Index() {
   const { c } = useTheme();
@@ -31,24 +34,24 @@ export default function Index() {
       if (cancelled) return;
 
       if (userId === null) {
-        setLanding({ kind: 'auth' });
+        // A2 before A3, but only ever once.
+        const chosen = await hasChosenLanguage();
+        if (cancelled) return;
+        setLanding({ kind: chosen ? 'auth' : 'language' });
         return;
       }
 
-      const profile = await getMyProfile();
+      const destination = await resolveLanding();
       if (cancelled) return;
 
-      // A profile we cannot read is not a reason to strand the user on a
-      // spinner — send them back through sign-in.
-      if (!profile.ok) {
+      // Could not read the profile — do not strand the user on a spinner.
+      if (destination === null) {
         setLanding({ kind: 'auth' });
         return;
       }
 
-      const to = resolvePostAuthDestination(profile.value);
-      if (to.kind === 'blocked') await signOut();
-
-      setLanding({ kind: 'signedIn', to });
+      if (destination.kind === 'blocked') await signOut();
+      setLanding({ kind: 'signedIn', href: landingHref(destination) });
     })();
 
     return () => {
@@ -56,30 +59,19 @@ export default function Index() {
     };
   }, []);
 
-  if (landing.kind === 'loading') {
-    return (
-      <View style={[styles.fill, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.textMuted} />
-      </View>
-    );
-  }
-
-  if (landing.kind === 'auth') return <Redirect href="/(auth)/phone" />;
-
-  switch (landing.to.kind) {
-    case 'blocked':
+  switch (landing.kind) {
+    case 'loading':
+      return (
+        <View style={[styles.fill, { backgroundColor: c.bg }]}>
+          <ActivityIndicator color={c.textMuted} />
+        </View>
+      );
+    case 'language':
+      return <Redirect href="/(auth)/language" />;
+    case 'auth':
       return <Redirect href="/(auth)/phone" />;
-    case 'role':
-      return <Redirect href="/(auth)/role" />;
-    case 'app':
-      switch (landing.to.role) {
-        case 'owner':
-          return <Redirect href="/(owner)/queue" />;
-        case 'admin':
-          return <Redirect href="/(admin)" />;
-        case 'client':
-          return <Redirect href="/(client)/home" />;
-      }
+    case 'signedIn':
+      return <Redirect href={landing.href} />;
   }
 }
 

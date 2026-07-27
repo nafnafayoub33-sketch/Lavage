@@ -27,22 +27,41 @@ type PendingRoleStore = {
   hydrate: () => Promise<void>;
 };
 
-export const usePendingRole = create<PendingRoleStore>((set) => ({
+export const usePendingRole = create<PendingRoleStore>((set, get) => ({
   role: null,
 
+  /**
+   * Storage first, memory second, so the two can never disagree: a failed
+   * write leaves the store exactly as it was.
+   *
+   * Rejects if the device refuses the write. The caller must handle that —
+   * A5 cannot quietly carry on, because a choice that did not persist is a
+   * signup that restarts from A5 after the next cold start.
+   */
   choose: async (role) => {
-    set({ role });
     await AsyncStorage.setItem(STORAGE_KEY, role);
+    set({ role });
   },
 
   clear: async () => {
-    set({ role: null });
     await AsyncStorage.removeItem(STORAGE_KEY);
+    set({ role: null });
   },
 
+  /**
+   * Fill in from storage, never overwrite.
+   *
+   * This used to assign whatever storage held, which meant a screen calling
+   * hydrate() on mount could wipe a role chosen moments earlier in the same
+   * session and bounce the user back to A5. Memory is the newer of the two
+   * by construction — choose() writes storage before it writes memory — so
+   * anything already in memory wins.
+   */
   hydrate: async () => {
+    if (get().role !== null) return;
+
     const saved = await AsyncStorage.getItem(STORAGE_KEY);
-    set({ role: saved === 'client' || saved === 'owner' ? saved : null });
+    if (saved === 'client' || saved === 'owner') set({ role: saved });
   },
 }));
 

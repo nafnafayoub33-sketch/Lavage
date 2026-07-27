@@ -14,15 +14,14 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { COUNTRY_PREFIX, formatNational, isValidMobile, toE164 } from '@/core/usecases/phone';
-import { resolvePostAuthDestination } from '@/core/usecases/postAuthRoute';
 import {
-  getMyProfile,
   resendOtp,
   signOut,
   verifyOtp,
   type AuthFailure,
 } from '@/data/repositories/AuthRepository';
 import { CODE_LENGTH, OtpBoxes } from '@/features/auth/OtpBoxes';
+import { landingHref, resolveLanding } from '@/features/auth/resolveLanding';
 import { useOtpLockout } from '@/features/auth/useOtpLockout';
 import { useResendCountdown } from '@/features/auth/useResendCountdown';
 import { useOffline } from '@/hooks/useOffline';
@@ -51,55 +50,63 @@ export default function OtpScreen() {
 
   const blocked = lockout.locked || verifying || offline || phoneE164 === null;
 
+  /**
+   * Never rejects. The lockout writes to storage and resolveLanding hits the
+   * network; either throwing used to leave `verifying` true forever, which
+   * disables the code boxes and the resend button both.
+   */
   const submit = async (value: string) => {
     if (phoneE164 === null) return;
 
     setVerifying(true);
     setFailure(null);
 
-    const result = await verifyOtp(phoneE164, value);
+    try {
+      const result = await verifyOtp(phoneE164, value);
 
-    if (!result.ok) {
+      if (!result.ok) {
+        setVerifying(false);
+        setFailure(result.reason);
+        setCode('');
+        // An expired code is not a wrong guess — do not spend an attempt on it.
+        if (result.reason === 'invalid_code') await lockout.fail();
+        return;
+      }
+
+      await lockout.reset();
+      await routeOnward();
+    } catch (error) {
+      console.error('[A4] verification failed unexpectedly', error);
       setVerifying(false);
-      setFailure(result.reason);
+      setFailure('unknown');
       setCode('');
-      // An expired code is not a wrong guess — do not spend an attempt on it.
-      if (result.reason === 'invalid_code') await lockout.fail();
-      return;
     }
-
-    await lockout.reset();
-    await routeOnward();
   };
 
   /**
-   * A4 -> "new user: A5 | returning: the app".
+   * A4 -> "new user: A5 | returning: the app", plus the mid-signup cases —
+   * someone who picked a role but never finished A6, or an owner who never
+   * finished O1.
+   *
    * The blocked re-check is defence in depth: 0002_is_phone_blocked.sql
    * already saved the SMS, this catches anyone blocked mid-session.
    */
   const routeOnward = async () => {
-    const profile = await getMyProfile();
+    const destination = await resolveLanding();
     setVerifying(false);
 
-    if (!profile.ok) {
-      setFailure(profile.reason);
+    if (destination === null) {
+      setFailure('unknown');
       return;
     }
 
-    const destination = resolvePostAuthDestination(profile.value);
-
-    switch (destination.kind) {
-      case 'blocked':
-        await signOut();
-        setFailure('blocked');
-        return;
-      case 'role':
-        router.replace('/(auth)/role');
-        return;
-      case 'app':
-        router.replace(homeFor(destination.role));
-        return;
+    if (destination.kind === 'blocked') {
+      await signOut();
+      setFailure('blocked');
+      return;
     }
+
+    router.replace(landingHref(destination));
   };
 
   // Six digits in, check it — nobody should have to press a second button
@@ -109,21 +116,27 @@ export default function OtpScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, blocked]);
 
+  /** Never rejects — see submit(). */
   const onResend = async () => {
     if (phoneE164 === null) return;
 
     setFailure(null);
     setCode('');
 
-    const result = await resendOtp(phoneE164);
-    if (!result.ok) {
-      setFailure(result.reason);
-      return;
-    }
+    try {
+      const result = await resendOtp(phoneE164);
+      if (!result.ok) {
+        setFailure(result.reason);
+        return;
+      }
 
-    // A fresh code deserves a fresh set of attempts.
-    await lockout.reset();
-    countdown.restart();
+      // A fresh code deserves a fresh set of attempts.
+      await lockout.reset();
+      countdown.restart();
+    } catch (error) {
+      console.error('[A4] resend failed unexpectedly', error);
+      setFailure('unknown');
+    }
   };
 
   const message = offline

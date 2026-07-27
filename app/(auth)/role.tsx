@@ -7,8 +7,12 @@
  * destructive ones.
  *
  * The role is not written to the database here: profiles.full_name is NOT
- * NULL and no name has been collected yet, so the row cannot exist until A6
- * (client) or O1 (owner). It waits in the pendingRole store.
+ * NULL and no name has been collected yet, so the row cannot exist until A6.
+ * It waits in the pendingRole store.
+ *
+ * Both roles go to A6 next. Owners used to be sent straight to O1, which
+ * could not work — O1 inserts a car_wash whose owner_id references a profile
+ * row that would not exist yet.
  */
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -17,6 +21,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { usePendingRole, type SignupRole } from '@/features/auth/pendingRole';
+import { Banner } from '@/ui/Banner';
 import { hitSize, radii, spacing, type } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
@@ -27,11 +32,31 @@ export default function RoleScreen() {
   const choose = usePendingRole((s) => s.choose);
 
   const [saving, setSaving] = useState<SignupRole | null>(null);
+  const [failed, setFailed] = useState(false);
 
+  /**
+   * Never rejects. It used to, and the rejection went nowhere: the caller was
+   * an Alert button, so a failed write left the screen with no error, no
+   * navigation, and `saving` stuck — which disabled both cards and made A5 a
+   * dead end.
+   */
   const commit = async (role: SignupRole) => {
     setSaving(role);
-    await choose(role);
-    router.replace(role === 'owner' ? '/(owner)/register' : '/(auth)/profile-setup');
+    setFailed(false);
+
+    try {
+      await choose(role);
+    } catch (error) {
+      // Worth a log line: this is a device storage failure, and the message
+      // is the only clue to which one.
+      console.error('[A5] could not persist the chosen role', error);
+      setFailed(true);
+      setSaving(null);
+      return;
+    }
+
+    // Same next screen for both — the paths diverge after A7.
+    router.replace('/(auth)/profile-setup');
   };
 
   // Irreversible: confirm before committing.
@@ -40,6 +65,7 @@ export default function RoleScreen() {
 
     Alert.alert(label, t('auth.roleWarn'), [
       { text: t('common.cancel'), style: 'cancel' },
+      // Safe to discard: commit() handles its own failures.
       { text: t('common.confirm'), onPress: () => void commit(role) },
     ]);
   };
@@ -51,6 +77,8 @@ export default function RoleScreen() {
           <Text style={[type.title, { color: c.text }]}>{t('auth.roleTitle')}</Text>
           <Text style={[type.body, { color: c.textMuted }]}>{t('auth.roleWarn')}</Text>
         </View>
+
+        {failed ? <Banner message={t('error.generic')} /> : null}
 
         <View style={styles.cards}>
           <RoleCard
