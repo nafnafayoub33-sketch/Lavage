@@ -70,6 +70,32 @@ money is always `int` centimes and only formatted at render time.
    none, and `full_name` is NOT NULL) → A5, otherwise straight to the app by role
 5. A5's answer waits in `pendingRole` until A6/O1 can insert the profile row
 
+**Registering a car wash (O1 → O2 → D2)**
+1. O1 collects the application over four steps and validates it with
+   `src/core/usecases/washApplication.ts`
+2. `register_car_wash()` (0014) re-checks the same rules, builds the PostGIS
+   point from a latitude and longitude, and returns the new id. It is an RPC
+   because PostgREST cannot be handed a `geography`, and because a second
+   undecided application has to be refused somewhere
+3. photos upload to `media/wash-photos/<id>/`, which needs that id to exist, so
+   it happens after step 2 — then `set_wash_media()` attaches the URLs
+4. every new row lands `pending`, unfunded and unrated, enforced by the
+   `guard_car_wash_insert` trigger rather than trusted to the client
+5. D2 calls `approve_wash()` or `reject_wash()` with a reason; O2 shows the
+   reason and calls `resubmit_wash()` when the owner has answered it
+
+**Storage — two buckets, decided**
+`media` is public-read and holds avatars (`avatars/<user_id>/`) and wash photos
+(`wash-photos/<wash_id>/`). `private` has no public read at all and holds
+transfer receipts (`receipts/<wash_id>/`), reached only through a signed URL.
+
+One bucket was the earlier plan and does not survive contact with what goes in
+it: a wash photo is a shopfront picture a client loads a dozen of at a time in
+C1, and a receipt is a financial document with an account number on it. A bucket
+is public or it is not. The path layout is a contract — 0013's policies key off
+the first two segments, and `src/data/repositories/StorageRepository.ts` is the
+only place those paths are built.
+
 **Booking**
 1. client picks service → `bookWash` usecase → insert `bookings` (status `pending`)
 2. DB trigger assigns the daily `ticket_no`

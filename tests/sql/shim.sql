@@ -21,6 +21,46 @@ create or replace function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
 $$;
 
+-- ---------------------------------------------------------------------
+-- Storage.
+--
+-- Close enough to the real thing for the 0013 policies to parse and to be
+-- exercised: the two tables they name, RLS on objects, and foldername(),
+-- which is what every one of those policies keys off. Supabase's version
+-- splits the path and drops the last segment — 'a/b/c.jpg' -> {a, b} — so a
+-- shim that returned all three would make every policy test lie.
+-- ---------------------------------------------------------------------
+create schema if not exists storage;
+
+create table storage.buckets (
+  id         text primary key,
+  name       text not null,
+  public     boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create table storage.objects (
+  id         uuid primary key default uuid_generate_v4(),
+  bucket_id  text not null references storage.buckets(id),
+  name       text not null,
+  owner      uuid,
+  created_at timestamptz not null default now()
+);
+
+alter table storage.objects enable row level security;
+
+create function storage.foldername(name text) returns text[]
+language plpgsql immutable as $$
+declare
+  _parts text[];
+begin
+  select string_to_array(name, '/') into _parts;
+  return _parts[1:array_length(_parts, 1) - 1];
+end $$;
+
+grant usage on schema storage to anon, authenticated;
+grant all on storage.buckets, storage.objects to anon, authenticated;
+
 -- Supabase ships this publication; Realtime streams whatever is added to it.
 -- Creating it here means 0006's ALTER PUBLICATION runs under test rather than
 -- being skipped, so a table that never reaches Realtime is a test failure.

@@ -67,6 +67,20 @@ const config: ExpoConfig = {
         supportedLocales: ['ar', 'fr', 'en'],
       },
     ],
+    [
+      // O1's photos. The default string is "Allow $(PRODUCT_NAME) to access
+      // your photos", which does not answer the question an owner actually
+      // asks at that prompt.
+      //
+      // Info.plist strings are not i18next keys and are not translated yet;
+      // localising them means InfoPlist.strings per language at build time.
+      // Tracked with the rest of the store-listing work.
+      'expo-image-picker',
+      {
+        photosPermission:
+          'Lavajna needs your photos so you can show clients what your car wash looks like.',
+      },
+    ],
   ],
 
   experiments: {
