@@ -193,6 +193,11 @@ number of bays · hours · documents (ID and business registration) · submit
 "Your application is with the admin, we'll get back to you within 48 hours" · edit details · contact
 **Rejected:** reason plus "Submit again"
 
+`rejected` is its own wash status (0012), distinct from `suspended`: rejected never went
+live and is answered by the owner, suspended was live and is lifted by an admin. The reason
+is in `car_washes.review_note`, written only by D2 and read-only to the owner.
+"Submit again" calls `resubmit_wash()`, which moves the application back to `pending`.
+
 ### O3 · Queue — `(owner)/queue` ⭐⭐ (the most important screen in the app)
 - **Top:** credit balance plus "Top up" · open/closed badge
 - **List:** each booking shows number · service · vehicle · client status (on the way / arrived) · time
@@ -251,9 +256,19 @@ Owner details · stats · invoices · language and appearance · notifications �
 ### D1 · Dashboard
 Washes today · revenue (today/month) · active car washes · pending approvals · open disputes · chart
 
-### D2 · Approvals ⭐
-Pending car washes with documents, photos and location · **Approve** / **Reject with reason**
-(the reason is sent to the owner)
+### D2 · Approvals ⭐ — `(admin)/approvals`
+Pending car washes, oldest first · photos · address and pin (opens the map) · hours and bays ·
+how many services are on the price list · the owner's name and number (tap to call) ·
+**Approve** (confirms first) / **Reject with reason**
+
+- The rejection reason is required, and it is the whole of what the owner reads on O2.
+- A wash with **no service on its price list** is flagged: approving it puts something in
+  C1 that nobody can book.
+- **States:** loading skeleton · error with retry · nothing waiting · data · offline.
+- Both decisions go through an RPC (`approve_wash` / `reject_wash`), not an UPDATE — since
+  migration 0010 no client-side write can move `car_washes.status` at all.
+- **Documents are not part of this yet.** The schema has photos and a location but no
+  document upload; when one is added it belongs on this card.
 
 ### D3 · Car washes
 Search and filter (status, city, credit, cancellation rate) · suspend/activate · manual credit

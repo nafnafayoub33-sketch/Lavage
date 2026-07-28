@@ -179,6 +179,25 @@ const ar = {
     deleteAccount: 'حذف الحساب',
     restartNeeded: 'خاص التطبيق يعاود يشعل باش تتبدل اللغة.',
   },
+  admin: {
+    dashboard: 'اللوحة',
+    approvals: 'الطلبات',
+    waiting: '{{count}} طلبات كيتسناو',
+    noPending: 'ماكاين حتى طلب كيتسنى.',
+    owner: 'المول',
+    bays: '{{count}} أماكن',
+    hours: 'من {{from}} ل {{to}}',
+    serviceCount: '{{count}} خدمات',
+    noServices: 'مازال ما زاد حتى خدمة — ماغاديش يقدرو يحجزو.',
+    appliedOn: 'طلب فـ {{date}}',
+    approve: 'قبل',
+    reject: 'رفض',
+    confirmApprove: 'واخا يبان هاد اللافاج للكليان؟',
+    rejectTitle: 'علاش كترفض؟',
+    rejectHint: 'كتب السبب — المول غادي يقراه.',
+    rejectSend: 'صيفط الرفض',
+    reasonRequired: 'خاصك تكتب السبب.',
+  },
   empty: {
     noWash: 'ماكاين حتى لافاج مفتوح قريب منك دابا.',
     noHistory: 'مازال ما غسلتي حتى مرة.',
@@ -347,6 +366,25 @@ const fr: typeof ar = {
     invite: 'Parrainer un ami', support: 'Aide', logout: 'Se déconnecter',
     deleteAccount: 'Supprimer le compte',
     restartNeeded: 'L\u2019app doit redémarrer pour changer de langue.',
+  },
+  admin: {
+    dashboard: 'Tableau de bord',
+    approvals: 'Demandes',
+    waiting: '{{count}} demandes en attente',
+    noPending: 'Aucune demande en attente.',
+    owner: 'Propriétaire',
+    bays: '{{count}} places',
+    hours: 'De {{from}} à {{to}}',
+    serviceCount: '{{count}} services',
+    noServices: 'Aucun service au tarif — personne ne pourra réserver.',
+    appliedOn: 'Demande du {{date}}',
+    approve: 'Accepter',
+    reject: 'Refuser',
+    confirmApprove: 'Rendre ce lavage visible aux clients ?',
+    rejectTitle: 'Pourquoi refuses-tu ?',
+    rejectHint: 'Écris la raison — le propriétaire la lira.',
+    rejectSend: 'Envoyer le refus',
+    reasonRequired: 'La raison est obligatoire.',
   },
   empty: {
     noWash: 'Aucun lavage ouvert près de toi pour le moment.',
@@ -517,6 +555,25 @@ const en: typeof ar = {
     deleteAccount: 'Delete account',
     restartNeeded: 'The app needs to restart to change language.',
   },
+  admin: {
+    dashboard: 'Dashboard',
+    approvals: 'Applications',
+    waiting: '{{count}} waiting',
+    noPending: 'No application is waiting.',
+    owner: 'Owner',
+    bays: '{{count}} bays',
+    hours: 'From {{from}} to {{to}}',
+    serviceCount: '{{count}} services',
+    noServices: 'Nothing on the price list — nobody would be able to book.',
+    appliedOn: 'Applied {{date}}',
+    approve: 'Approve',
+    reject: 'Reject',
+    confirmApprove: 'Make this car wash visible to clients?',
+    rejectTitle: 'Why are you rejecting it?',
+    rejectHint: 'Write the reason — the owner reads it.',
+    rejectSend: 'Send the rejection',
+    reasonRequired: 'The reason is required.',
+  },
   empty: {
     noWash: 'No car wash is open near you right now.',
     noHistory: 'You haven\u2019t washed anything yet.',
@@ -621,6 +678,19 @@ export const formatDH = (centimes: number, lng: Lang = currentLang()) =>
     currency: 'MAD',
     maximumFractionDigits: 2,
   }).format(centimes / 100);
+
+/**
+ * A day and a month, for "applied on" and the like. Never a bare
+ * toLocaleDateString(): that follows the device locale, not the language the
+ * user picked, so an Arabic UI on a French phone would date things in French.
+ *
+ * `-u-nu-latn` pins Latin digits, per the same rule as prices.
+ */
+export const formatDate = (iso: string, lng: Lang = currentLang()) =>
+  new Intl.DateTimeFormat(
+    lng === 'ar' ? 'ar-MA-u-nu-latn' : lng === 'fr' ? 'fr-MA' : 'en-MA',
+    { day: '2-digit', month: 'short' },
+  ).format(new Date(iso));
 
 /**
  * Numbers, prices, plates and ticket numbers stay Latin and LTR in every
