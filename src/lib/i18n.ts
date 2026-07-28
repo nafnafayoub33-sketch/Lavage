@@ -126,6 +126,13 @@ const ar = {
     confirmClose: 'واخا تسد اليوم؟ ما غاديش يقدرو يحجزو.',
     reopen: 'حل من جديد',
     freeWashes: 'غسلات مجانية',
+    addWalkIn: 'زيد كليان',
+    walkInLabel: 'الاسم ولا الطوموبيل',
+    walkInHint: 'مثلا: كليو حمرا، ولا سعيد',
+    walkInPick: 'شنو الخدمة؟',
+    walkInBadge: 'بلا تطبيق',
+    walkInNeedsService: 'خاصك تزيد خدمة وحدة على الأقل قبل.',
+    confirmWalkIn: 'أكد وخلص',
     transactions: 'الحركات',
     topupTitle: 'شحن الرصيد',
     topupAmount: 'شحال بغيتي تشحن؟',
@@ -171,6 +178,25 @@ const ar = {
     invite: 'عرض على صاحبك', support: 'المساعدة', logout: 'خروج',
     deleteAccount: 'حذف الحساب',
     restartNeeded: 'خاص التطبيق يعاود يشعل باش تتبدل اللغة.',
+  },
+  admin: {
+    dashboard: 'اللوحة',
+    approvals: 'الطلبات',
+    waiting: '{{count}} طلبات كيتسناو',
+    noPending: 'ماكاين حتى طلب كيتسنى.',
+    owner: 'المول',
+    bays: '{{count}} أماكن',
+    hours: 'من {{from}} ل {{to}}',
+    serviceCount: '{{count}} خدمات',
+    noServices: 'مازال ما زاد حتى خدمة — ماغاديش يقدرو يحجزو.',
+    appliedOn: 'طلب فـ {{date}}',
+    approve: 'قبل',
+    reject: 'رفض',
+    confirmApprove: 'واخا يبان هاد اللافاج للكليان؟',
+    rejectTitle: 'علاش كترفض؟',
+    rejectHint: 'كتب السبب — المول غادي يقراه.',
+    rejectSend: 'صيفط الرفض',
+    reasonRequired: 'خاصك تكتب السبب.',
   },
   empty: {
     noWash: 'ماكاين حتى لافاج مفتوح قريب منك دابا.',
@@ -287,6 +313,13 @@ const fr: typeof ar = {
     confirmClose: 'Fermer pour aujourd\u2019hui ? Plus personne ne pourra réserver.',
     reopen: 'Rouvrir',
     freeWashes: 'lavages offerts',
+    addWalkIn: 'Ajouter un client',
+    walkInLabel: 'Nom ou voiture',
+    walkInHint: 'Par exemple : Clio rouge, ou Said',
+    walkInPick: 'Quel service ?',
+    walkInBadge: 'sans appli',
+    walkInNeedsService: 'Ajoute d\u2019abord au moins un service.',
+    confirmWalkIn: 'Confirmer et facturer',
     transactions: 'Mouvements',
     topupTitle: 'Recharger le solde',
     topupAmount: 'Combien veux-tu recharger ?',
@@ -333,6 +366,25 @@ const fr: typeof ar = {
     invite: 'Parrainer un ami', support: 'Aide', logout: 'Se déconnecter',
     deleteAccount: 'Supprimer le compte',
     restartNeeded: 'L\u2019app doit redémarrer pour changer de langue.',
+  },
+  admin: {
+    dashboard: 'Tableau de bord',
+    approvals: 'Demandes',
+    waiting: '{{count}} demandes en attente',
+    noPending: 'Aucune demande en attente.',
+    owner: 'Propriétaire',
+    bays: '{{count}} places',
+    hours: 'De {{from}} à {{to}}',
+    serviceCount: '{{count}} services',
+    noServices: 'Aucun service au tarif — personne ne pourra réserver.',
+    appliedOn: 'Demande du {{date}}',
+    approve: 'Accepter',
+    reject: 'Refuser',
+    confirmApprove: 'Rendre ce lavage visible aux clients ?',
+    rejectTitle: 'Pourquoi refuses-tu ?',
+    rejectHint: 'Écris la raison — le propriétaire la lira.',
+    rejectSend: 'Envoyer le refus',
+    reasonRequired: 'La raison est obligatoire.',
   },
   empty: {
     noWash: 'Aucun lavage ouvert près de toi pour le moment.',
@@ -449,6 +501,13 @@ const en: typeof ar = {
     confirmClose: 'Close for today? Nobody will be able to book.',
     reopen: 'Reopen',
     freeWashes: 'free washes',
+    addWalkIn: 'Add a customer',
+    walkInLabel: 'Name or car',
+    walkInHint: 'For example: red Clio, or Said',
+    walkInPick: 'Which service?',
+    walkInBadge: 'no app',
+    walkInNeedsService: 'Add at least one service first.',
+    confirmWalkIn: 'Confirm and bill',
     transactions: 'Transactions',
     topupTitle: 'Top up',
     topupAmount: 'How much do you want to add?',
@@ -495,6 +554,25 @@ const en: typeof ar = {
     invite: 'Invite a friend', support: 'Support', logout: 'Log out',
     deleteAccount: 'Delete account',
     restartNeeded: 'The app needs to restart to change language.',
+  },
+  admin: {
+    dashboard: 'Dashboard',
+    approvals: 'Applications',
+    waiting: '{{count}} waiting',
+    noPending: 'No application is waiting.',
+    owner: 'Owner',
+    bays: '{{count}} bays',
+    hours: 'From {{from}} to {{to}}',
+    serviceCount: '{{count}} services',
+    noServices: 'Nothing on the price list — nobody would be able to book.',
+    appliedOn: 'Applied {{date}}',
+    approve: 'Approve',
+    reject: 'Reject',
+    confirmApprove: 'Make this car wash visible to clients?',
+    rejectTitle: 'Why are you rejecting it?',
+    rejectHint: 'Write the reason — the owner reads it.',
+    rejectSend: 'Send the rejection',
+    reasonRequired: 'The reason is required.',
   },
   empty: {
     noWash: 'No car wash is open near you right now.',
@@ -600,6 +678,19 @@ export const formatDH = (centimes: number, lng: Lang = currentLang()) =>
     currency: 'MAD',
     maximumFractionDigits: 2,
   }).format(centimes / 100);
+
+/**
+ * A day and a month, for "applied on" and the like. Never a bare
+ * toLocaleDateString(): that follows the device locale, not the language the
+ * user picked, so an Arabic UI on a French phone would date things in French.
+ *
+ * `-u-nu-latn` pins Latin digits, per the same rule as prices.
+ */
+export const formatDate = (iso: string, lng: Lang = currentLang()) =>
+  new Intl.DateTimeFormat(
+    lng === 'ar' ? 'ar-MA-u-nu-latn' : lng === 'fr' ? 'fr-MA' : 'en-MA',
+    { day: '2-digit', month: 'short' },
+  ).format(new Date(iso));
 
 /**
  * Numbers, prices, plates and ticket numbers stay Latin and LTR in every

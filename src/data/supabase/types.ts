@@ -17,8 +17,12 @@
 /** 0001_init.sql — create type user_role as enum ('admin', 'owner', 'client') */
 export type UserRole = 'admin' | 'owner' | 'client';
 
-/** 0001_init.sql — create type wash_status as enum (...) */
-export type WashStatus = 'pending' | 'approved' | 'suspended' | 'closed';
+/**
+ * 0001_init.sql — create type wash_status as enum (...)
+ * 0012_wash_review.sql adds 'rejected': never went live, as opposed to
+ * 'suspended', which was live and was stopped.
+ */
+export type WashStatus = 'pending' | 'approved' | 'suspended' | 'closed' | 'rejected';
 
 /** 0001_init.sql — create table profiles */
 export type ProfileRow = {
@@ -73,6 +77,10 @@ export type CarWashRow = {
   rating_count: number;
   cancel_rate: number;
   created_at: string;
+  /** 0012 — the admin's reason, shown to the owner on O2. Null once approved. */
+  review_note: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
 };
 
 /** 0001_init.sql — create table services */
@@ -115,7 +123,9 @@ export type ArrivalStatus = 'on_the_way' | 'arrived';
 export type BookingRow = {
   id: string;
   car_wash_id: string;
-  client_id: string;
+  /** null for a walk-in; walkin_label carries the name instead */
+  client_id: string | null;
+  walkin_label: string | null;
   vehicle_id: string | null;
   service_id: string;
   status: BookingStatus;
@@ -184,7 +194,12 @@ export type Database = {
       };
       car_washes: {
         Row: CarWashRow;
-        Insert: Omit<CarWashRow, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        // The review columns are written only by the 0012 RPCs, and the guard
+        // trigger refuses them from anyone else — so they are not insertable.
+        Insert: Omit<
+          CarWashRow,
+          'id' | 'created_at' | 'review_note' | 'reviewed_at' | 'reviewed_by'
+        > & { id?: string; created_at?: string };
         Update: Partial<CarWashRow>;
         Relationships: [];
       };
@@ -251,10 +266,23 @@ export type Database = {
       };
       bookings: {
         Row: BookingRow;
-        Insert: Omit<BookingRow, 'id' | 'ticket_no' | 'created_at'> & {
+        // Only the four columns a caller genuinely supplies are required.
+        // Everything else is defaulted by 0001, nullable, or written by a
+        // trigger — ticket_no by set_ticket_no, price and arrival by
+        // guard_booking_insert.
+        Insert: {
+          car_wash_id: string;
+          service_id: string;
+          client_id?: string | null;
+          walkin_label?: string | null;
+          vehicle_id?: string | null;
+          status?: BookingStatus;
+          arrival?: ArrivalStatus | null;
+          price?: number;
+          payment_method?: 'cash' | 'card' | 'wallet';
           id?: string;
-          // assigned by the set_ticket_no trigger, never by the client
           ticket_no?: number;
+          estimated_at?: string | null;
           created_at?: string;
         };
         Update: Partial<BookingRow>;
@@ -321,6 +349,41 @@ export type Database = {
         Args: { p_request_id: string; p_note: string };
         Returns: undefined;
       };
+      /** 0012_wash_review.sql — D2's queue. Admin only; others get zero rows. */
+      pending_washes: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          name: string;
+          address: string;
+          city: string;
+          phone: string | null;
+          photos: string[];
+          bays_count: number;
+          opens_at: string;
+          closes_at: string;
+          latitude: number;
+          longitude: number;
+          created_at: string;
+          owner_name: string;
+          owner_phone: string | null;
+          service_count: number;
+        }[];
+      };
+      /** 0012_wash_review.sql — D2 decides */
+      approve_wash: {
+        Args: { p_wash_id: string };
+        Returns: undefined;
+      };
+      reject_wash: {
+        Args: { p_wash_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      /** 0012_wash_review.sql — O2's "Submit again" */
+      resubmit_wash: {
+        Args: { p_wash_id: string };
+        Returns: undefined;
+      };
       /** 0007_owner_queue.sql — backs O3 */
       owner_queue: {
         Args: { p_wash_id: string };
@@ -334,8 +397,9 @@ export type Database = {
           started_at: string | null;
           service_name: string;
           service_minutes: number;
-          client_first_name: string;
+          client_first_name: string | null;
           client_phone: string | null;
+          walkin_label: string | null;
           vehicle_label: string | null;
         }[];
       };

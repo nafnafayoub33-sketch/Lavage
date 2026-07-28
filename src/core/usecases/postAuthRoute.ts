@@ -60,7 +60,12 @@ export function resolvePostAuthDestination(input: PostAuthInput): PostAuthDestin
     // Not looked up yet — the caller has to fetch it before we can answer.
     if (washStatus === undefined) return { kind: 'registerWash' };
     if (washStatus === null) return { kind: 'registerWash' };
-    if (washStatus === 'pending') return { kind: 'washPending' };
+    // 'rejected' goes to the same screen: O2 is where the admin's reason is
+    // shown and where "Submit again" lives, so the two states share a
+    // destination even though they read very differently once there.
+    if (washStatus === 'pending' || washStatus === 'rejected') {
+      return { kind: 'washPending' };
+    }
     // approved, suspended and closed all belong on the queue board; the board
     // is what explains a suspension to its owner.
   }

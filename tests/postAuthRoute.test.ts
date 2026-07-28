@@ -79,6 +79,15 @@ describe('owners, by the state of their car wash', () => {
     });
   });
 
+  it('sends a rejected owner to O2, where the reason and "submit again" are', () => {
+    // Not to O1: the application still exists, it just came back. Sending
+    // them to registration would mean filling the whole form again with no
+    // idea what was wrong with it.
+    expect(resolve({ profile: owner, pendingRole: null, washStatus: 'rejected' })).toEqual({
+      kind: 'washPending',
+    });
+  });
+
   it.each(['approved', 'suspended', 'closed'] as const)(
     'sends an owner with a %s wash to the queue board',
     (washStatus) => {

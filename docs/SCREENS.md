@@ -193,17 +193,35 @@ number of bays · hours · documents (ID and business registration) · submit
 "Your application is with the admin, we'll get back to you within 48 hours" · edit details · contact
 **Rejected:** reason plus "Submit again"
 
+`rejected` is its own wash status (0012), distinct from `suspended`: rejected never went
+live and is answered by the owner, suspended was live and is lifted by an admin. The reason
+is in `car_washes.review_note`, written only by D2 and read-only to the owner.
+"Submit again" calls `resubmit_wash()`, which moves the application back to `pending`.
+
 ### O3 · Queue — `(owner)/queue` ⭐⭐ (the most important screen in the app)
 - **Top:** credit balance plus "Top up" · open/closed badge
 - **List:** each booking shows number · service · vehicle · client status (on the way / arrived) · time
 - **Per-row actions:** Start · Done · No-show · Call
+- **Walk-ins:** "Add a customer" opens a sheet — a free-text label (a name or a car) and
+  which service. The walk-in takes a ticket and a queue position like any other booking,
+  is marked `arrived` on insert, and carries a "no app" badge on the board.
+  There is nobody to confirm it afterwards, so a finished walk-in gets a
+  **"Confirm and bill"** button; app bookings still wait on the client.
+  Walk-ins bill at `walkin_fee_centimes` (0.50 DH), app bookings at
+  `wash_fee_centimes` (1 DH) — both editable in D9. Arrival only: no future slot.
 - **Bottom:** "Closed today" (stops new bookings; queued clients get a notification)
 - **States:** empty queue · credit running low (amber warning) ·
-  **credit at zero** (red screen: "You're hidden from clients — top up now")
+  **credit at zero** (red screen: "You're hidden from clients — top up now") ·
+  no service on the price list yet (the walk-in sheet says so and links to O6)
 - **Live:** new bookings appear without a refresh, with a sound
 
 ### O4 · Booking detail — `(owner)/booking/[id]`
-Client (first name and a masked number) · vehicle and photo · service and price · timestamps · actions
+Client (first name and phone number) · vehicle and photo · service and price · timestamps · actions
+
+**Phone numbers are shown in full, on both sides, deliberately.** An owner who cannot
+reach the car in front of them cannot run the queue. `maskPhone()` is kept in
+`src/lib/format.ts` with its tests, unwired — we will want it the first time an owner
+complains about late-night calls, and turning it on is a one-line change.
 
 ### O5 · My wash page — `(owner)/wash` ⭐
 The same page as C3 but **editable**: photos, description, hours, bays, location, open/closed
@@ -238,9 +256,19 @@ Owner details · stats · invoices · language and appearance · notifications �
 ### D1 · Dashboard
 Washes today · revenue (today/month) · active car washes · pending approvals · open disputes · chart
 
-### D2 · Approvals ⭐
-Pending car washes with documents, photos and location · **Approve** / **Reject with reason**
-(the reason is sent to the owner)
+### D2 · Approvals ⭐ — `(admin)/approvals`
+Pending car washes, oldest first · photos · address and pin (opens the map) · hours and bays ·
+how many services are on the price list · the owner's name and number (tap to call) ·
+**Approve** (confirms first) / **Reject with reason**
+
+- The rejection reason is required, and it is the whole of what the owner reads on O2.
+- A wash with **no service on its price list** is flagged: approving it puts something in
+  C1 that nobody can book.
+- **States:** loading skeleton · error with retry · nothing waiting · data · offline.
+- Both decisions go through an RPC (`approve_wash` / `reject_wash`), not an UPDATE — since
+  migration 0010 no client-side write can move `car_washes.status` at all.
+- **Documents are not part of this yet.** The schema has photos and a location but no
+  document upload; when one is added it belongs on this card.
 
 ### D3 · Car washes
 Search and filter (status, city, credit, cancellation rate) · suspend/activate · manual credit
