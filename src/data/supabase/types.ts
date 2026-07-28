@@ -115,7 +115,9 @@ export type ArrivalStatus = 'on_the_way' | 'arrived';
 export type BookingRow = {
   id: string;
   car_wash_id: string;
-  client_id: string;
+  /** null for a walk-in; walkin_label carries the name instead */
+  client_id: string | null;
+  walkin_label: string | null;
   vehicle_id: string | null;
   service_id: string;
   status: BookingStatus;
@@ -251,10 +253,23 @@ export type Database = {
       };
       bookings: {
         Row: BookingRow;
-        Insert: Omit<BookingRow, 'id' | 'ticket_no' | 'created_at'> & {
+        // Only the four columns a caller genuinely supplies are required.
+        // Everything else is defaulted by 0001, nullable, or written by a
+        // trigger — ticket_no by set_ticket_no, price and arrival by
+        // guard_booking_insert.
+        Insert: {
+          car_wash_id: string;
+          service_id: string;
+          client_id?: string | null;
+          walkin_label?: string | null;
+          vehicle_id?: string | null;
+          status?: BookingStatus;
+          arrival?: ArrivalStatus | null;
+          price?: number;
+          payment_method?: 'cash' | 'card' | 'wallet';
           id?: string;
-          // assigned by the set_ticket_no trigger, never by the client
           ticket_no?: number;
+          estimated_at?: string | null;
           created_at?: string;
         };
         Update: Partial<BookingRow>;
@@ -334,8 +349,9 @@ export type Database = {
           started_at: string | null;
           service_name: string;
           service_minutes: number;
-          client_first_name: string;
+          client_first_name: string | null;
           client_phone: string | null;
+          walkin_label: string | null;
           vehicle_label: string | null;
         }[];
       };

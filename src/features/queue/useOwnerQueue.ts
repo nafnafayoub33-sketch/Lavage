@@ -16,6 +16,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
 import {
+  addWalkIn,
+  confirmWalkIn,
   finishWash,
   getOwnerQueue,
   markNoShow,
@@ -23,7 +25,7 @@ import {
   startWash,
   type QueueRow,
 } from '@/data/repositories/OwnerQueueRepository';
-import { getMyWash } from '@/data/repositories/WashRepository';
+import { getMyWash, getServices } from '@/data/repositories/WashRepository';
 import { subscribeToQueue } from '@/data/realtime/queueChannel';
 
 export function useOwnerQueue() {
@@ -113,6 +115,36 @@ export function useOwnerQueue() {
     onSuccess: invalidate,
   });
 
+  // The walk-in sheet needs the price list to ask which service.
+  const servicesQuery = useQuery({
+    queryKey: ['services', washId],
+    enabled: washId !== null,
+    queryFn: async () => {
+      if (washId === null) return [];
+      const result = await getServices(washId);
+      if (!result.ok) throw new Error(result.reason);
+      return result.value.filter((service) => service.is_active);
+    },
+  });
+
+  const walkIn = useMutation({
+    mutationFn: async ({ serviceId, label }: { serviceId: string; label: string }) => {
+      if (washId === null) throw new Error('no wash');
+      const result = await addWalkIn({ washId, serviceId, label });
+      if (!result.ok) throw new Error(result.reason);
+    },
+    onSuccess: invalidate,
+  });
+
+  // Only reachable on a walk-in: an app booking is the client's to confirm.
+  const confirm = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const result = await confirmWalkIn(bookingId);
+      if (!result.ok) throw new Error(result.reason);
+    },
+    onSuccess: invalidate,
+  });
+
   const toggleOpen = useMutation({
     mutationFn: async (isOpen: boolean) => {
       if (washId === null) throw new Error('no wash');
@@ -134,9 +166,12 @@ export function useOwnerQueue() {
       void washQuery.refetch();
       void queueQuery.refetch();
     },
+    services: servicesQuery.data ?? [],
     start,
     finish,
     noShow,
+    walkIn,
+    confirm,
     toggleOpen,
   };
 }

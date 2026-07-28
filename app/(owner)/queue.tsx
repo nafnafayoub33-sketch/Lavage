@@ -16,15 +16,26 @@
  * republishes the wash summary, and this board is another subscriber.
  */
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { creditStateFor, type CreditState } from '@/core/usecases/ownerCredit';
 import type { QueueRow } from '@/data/repositories/OwnerQueueRepository';
+import type { ServiceRow } from '@/data/supabase/types';
 import { useOwnerQueue } from '@/features/queue/useOwnerQueue';
 import { useOffline } from '@/hooks/useOffline';
-import { maskPhone } from '@/lib/format';
 import { formatDH } from '@/lib/i18n';
 import { Banner } from '@/ui/Banner';
 import { Button } from '@/ui/Button';
@@ -39,6 +50,7 @@ export default function OwnerQueueScreen() {
   const router = useRouter();
   const offline = useOffline();
   const board = useOwnerQueue();
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const wash = board.wash;
   const credit: CreditState =
@@ -94,6 +106,17 @@ export default function OwnerQueueScreen() {
           />
         ) : null}
 
+        {/* Above the list, not below it: the owner reaches for this while
+            somebody is standing in front of them, and the list can be long. */}
+        {wash !== null && !board.isLoading && !board.isError ? (
+          <Button
+            label={t('owner.addWalkIn')}
+            variant="secondary"
+            size="owner"
+            onPress={() => setSheetOpen(true)}
+          />
+        ) : null}
+
         {board.isLoading ? (
           <SkeletonList rows={4} />
         ) : board.isError ? (
@@ -118,6 +141,7 @@ export default function OwnerQueueScreen() {
                 row={row}
                 onStart={() => board.start.mutate(row.bookingId)}
                 onFinish={() => board.finish.mutate(row.bookingId)}
+                onConfirm={() => board.confirm.mutate(row.bookingId)}
                 onNoShow={() =>
                   Alert.alert(t('owner.confirmNoShow'), undefined, [
                     { text: t('common.cancel'), style: 'cancel' },
@@ -145,7 +169,198 @@ export default function OwnerQueueScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      <WalkInSheet
+        visible={sheetOpen}
+        services={board.services}
+        pending={board.walkIn.isPending}
+        offline={offline}
+        onClose={() => setSheetOpen(false)}
+        onAddService={() => {
+          setSheetOpen(false);
+          router.push('/(owner)/wash/services');
+        }}
+        onSubmit={(draft) => {
+          board.walkIn.mutate(draft, {
+            onSuccess: () => setSheetOpen(false),
+            onError: (error) => {
+              console.error('[O3] could not add the walk-in', error);
+              Alert.alert(t('error.generic'), undefined, [{ text: t('common.close') }]);
+            },
+          });
+        }}
+      />
     </SafeAreaView>
+  );
+}
+
+/**
+ * The add-a-customer sheet.
+ *
+ * Two fields and nothing else. Someone is standing at the counter while this
+ * is open, so it asks for the least that 0011 cannot derive: a label to call
+ * out, and which service. The price comes from the price list, the ticket
+ * from set_ticket_no, and arrival is stamped `arrived` by the insert guard.
+ */
+function WalkInSheet({
+  visible,
+  services,
+  pending,
+  offline,
+  onClose,
+  onAddService,
+  onSubmit,
+}: {
+  visible: boolean;
+  services: ServiceRow[];
+  pending: boolean;
+  offline: boolean;
+  onClose: () => void;
+  onAddService: () => void;
+  onSubmit: (draft: { serviceId: string; label: string }) => void;
+}) {
+  const { t } = useTranslation();
+  const { c } = useTheme();
+
+  const [label, setLabel] = useState('');
+  const [serviceId, setServiceId] = useState<string | null>(null);
+
+  // One service on the list is not a choice, it is the answer.
+  const chosen = serviceId ?? (services.length === 1 ? services[0].id : null);
+  const ready = label.trim() !== '' && chosen !== null;
+
+  const close = () => {
+    setLabel('');
+    setServiceId(null);
+    onClose();
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={close}
+      accessibilityViewIsModal
+    >
+      <View style={[styles.backdrop, { backgroundColor: c.scrim }]}>
+        <View style={[styles.sheet, { backgroundColor: c.bg, borderColor: c.line }]}>
+          <ScrollView
+            contentContainerStyle={styles.sheetContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={[type.title, { color: c.text }]}>{t('owner.addWalkIn')}</Text>
+
+            {services.length === 0 ? (
+              // Nothing to book them onto. Say why, and offer the way out.
+              <>
+                <EmptyState
+                  message={t('owner.walkInNeedsService')}
+                  actionLabel={t('wash.services')}
+                  onAction={onAddService}
+                />
+                <Button
+                  label={t('common.close')}
+                  variant="ghost"
+                  size="owner"
+                  onPress={close}
+                />
+              </>
+            ) : (
+              <>
+                <View style={styles.field}>
+                  <Text style={[type.label, { color: c.textMuted }]}>
+                    {t('owner.walkInLabel')}
+                  </Text>
+                  <TextInput
+                    value={label}
+                    onChangeText={setLabel}
+                    placeholder={t('owner.walkInHint')}
+                    placeholderTextColor={c.textFaint}
+                    autoFocus
+                    style={[
+                      type.body,
+                      styles.input,
+                      { backgroundColor: c.surface, borderColor: c.line, color: c.text },
+                    ]}
+                  />
+                </View>
+
+                <Text style={[type.label, { color: c.textMuted }]}>
+                  {t('owner.walkInPick')}
+                </Text>
+                <View style={styles.services}>
+                  {services.map((service) => (
+                    <ServiceChoice
+                      key={service.id}
+                      service={service}
+                      selected={chosen === service.id}
+                      onPress={() => setServiceId(service.id)}
+                    />
+                  ))}
+                </View>
+
+                <Button
+                  label={t('owner.addWalkIn')}
+                  size="owner"
+                  disabled={!ready || offline}
+                  loading={pending}
+                  onPress={() => {
+                    if (chosen === null) return;
+                    onSubmit({ serviceId: chosen, label: label.trim() });
+                    setLabel('');
+                    setServiceId(null);
+                  }}
+                />
+                <Button
+                  label={t('common.cancel')}
+                  variant="ghost"
+                  size="owner"
+                  onPress={close}
+                />
+              </>
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function ServiceChoice({
+  service,
+  selected,
+  onPress,
+}: {
+  service: ServiceRow;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const { c } = useTheme();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={[
+        styles.service,
+        {
+          backgroundColor: selected ? c.primary : c.surface,
+          borderColor: selected ? c.primary : c.line,
+        },
+      ]}
+    >
+      <Text
+        style={[type.label, { color: selected ? c.onPrimary : c.text }]}
+        numberOfLines={1}
+      >
+        {service.name}
+      </Text>
+      <Text style={[type.caption, numeric, { color: selected ? c.onPrimary : c.textMuted }]}>
+        {formatDH(service.price)}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -221,11 +436,13 @@ function Row({
   onStart,
   onFinish,
   onNoShow,
+  onConfirm,
 }: {
   row: QueueRow;
   onStart: () => void;
   onFinish: () => void;
   onNoShow: () => void;
+  onConfirm: () => void;
 }) {
   const { t } = useTranslation();
   const { c } = useTheme();
@@ -247,8 +464,15 @@ function Row({
             {row.serviceName}
           </Text>
           <Text style={[type.caption, { color: c.textMuted }]} numberOfLines={1}>
-            {row.vehicleLabel ?? row.clientFirstName}
+            {row.walkinLabel ?? row.vehicleLabel ?? row.clientFirstName ?? ''}
           </Text>
+          {/* A walk-in has nobody to notify, so the owner needs to see at a
+              glance which rows they are responsible for chasing. */}
+          {row.walkinLabel !== null ? (
+            <Text style={[type.caption, { color: c.textFaint }]}>
+              {t('owner.walkInBadge')}
+            </Text>
+          ) : null}
           {/* The client's own word (0008). Absent means they have not said,
               which is different from "not coming" and is left blank. */}
           {row.arrival !== null ? (
@@ -261,9 +485,12 @@ function Row({
               {row.arrival === 'arrived' ? t('owner.arrived') : t('owner.onTheWay')}
             </Text>
           ) : null}
+          {/* Shown in full. Masking is deliberately off for now — maskPhone()
+              is kept in src/lib/format.ts for the day an owner complains
+              about late-night calls. See docs/SCREENS.md O4. */}
           {row.clientPhone !== null ? (
             <Text style={[type.caption, numeric, { color: c.textFaint }]}>
-              {maskPhone(row.clientPhone)}
+              {row.clientPhone}
             </Text>
           ) : null}
         </View>
@@ -291,7 +518,13 @@ function Row({
         ) : null}
 
         {row.status === 'done' ? (
-          <Text style={[type.label, { color: c.textMuted }]}>{t('booking.confirmDone')}</Text>
+          row.walkinLabel !== null ? (
+            // Nobody else can confirm a walk-in; without this it would sit
+            // until the two-hour cron swept it up.
+            <Button label={t('owner.confirmWalkIn')} size="owner" onPress={onConfirm} />
+          ) : (
+            <Text style={[type.label, { color: c.textMuted }]}>{t('booking.confirmDone')}</Text>
+          )
         ) : null}
 
         {row.clientPhone !== null && row.clientPhone !== '' ? (
@@ -352,4 +585,31 @@ const styles = StyleSheet.create({
     rowGap: spacing.sm,
   },
   footer: { marginTop: 'auto', paddingTop: spacing.lg },
+
+  backdrop: { flex: 1, justifyContent: 'flex-end' },
+  sheet: {
+    maxHeight: '85%',
+    borderTopStartRadius: radii.xl,
+    borderTopEndRadius: radii.xl,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  sheetContent: { padding: spacing.lg, rowGap: spacing.md },
+  field: { rowGap: spacing.xs },
+  input: {
+    minHeight: hitSize.primary,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  services: { rowGap: spacing.sm },
+  service: {
+    minHeight: hitSize.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    columnGap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
 });

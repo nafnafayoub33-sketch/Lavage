@@ -24,9 +24,12 @@ export type QueueRow = {
   startedAt: string | null;
   serviceName: string;
   serviceMinutes: number;
-  clientFirstName: string;
-  /** full number: "Call" has to dial. O3 displays it masked. */
+  /** null for a walk-in */
+  clientFirstName: string | null;
+  /** the real number, shown as-is — masking is off for now, see SCREENS.md O4 */
   clientPhone: string | null;
+  /** set instead of a client, for someone who turned up without the app */
+  walkinLabel: string | null;
   vehicleLabel: string | null;
 };
 
@@ -51,6 +54,7 @@ export async function getOwnerQueue(washId: string): Promise<AuthResult<QueueRow
       serviceMinutes: row.service_minutes,
       clientFirstName: row.client_first_name,
       clientPhone: row.client_phone,
+      walkinLabel: row.walkin_label,
       vehicleLabel: row.vehicle_label,
     })),
   };
@@ -103,3 +107,39 @@ export async function setOpenToday(
   }
   return { ok: true, value: undefined };
 }
+
+/**
+ * O3 — add someone standing at the counter.
+ *
+ * The label is all the owner supplies beyond the service: 0011 derives the
+ * price from the price list, stamps arrival as `arrived`, and refuses the
+ * insert unless the caller owns the wash.
+ */
+export async function addWalkIn({
+  washId,
+  serviceId,
+  label,
+}: {
+  washId: string;
+  serviceId: string;
+  label: string;
+}): Promise<AuthResult<void>> {
+  const { error } = await supabase.from('bookings').insert({
+    car_wash_id: washId,
+    client_id: null,
+    walkin_label: label,
+    service_id: serviceId,
+    status: 'pending',
+    // Ignored — guard_booking_insert overwrites it from the service.
+    price: 0,
+  });
+
+  if (error) {
+    return { ok: false, reason: error.code === undefined ? 'offline' : 'unknown' };
+  }
+  return { ok: true, value: undefined };
+}
+
+/** Walk-ins have nobody to confirm them, so the owner does. */
+export const confirmWalkIn = (bookingId: string) =>
+  setStatus(bookingId, { status: 'confirmed' });

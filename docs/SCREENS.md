@@ -197,13 +197,26 @@ number of bays · hours · documents (ID and business registration) · submit
 - **Top:** credit balance plus "Top up" · open/closed badge
 - **List:** each booking shows number · service · vehicle · client status (on the way / arrived) · time
 - **Per-row actions:** Start · Done · No-show · Call
+- **Walk-ins:** "Add a customer" opens a sheet — a free-text label (a name or a car) and
+  which service. The walk-in takes a ticket and a queue position like any other booking,
+  is marked `arrived` on insert, and carries a "no app" badge on the board.
+  There is nobody to confirm it afterwards, so a finished walk-in gets a
+  **"Confirm and bill"** button; app bookings still wait on the client.
+  Walk-ins bill at `walkin_fee_centimes` (0.50 DH), app bookings at
+  `wash_fee_centimes` (1 DH) — both editable in D9. Arrival only: no future slot.
 - **Bottom:** "Closed today" (stops new bookings; queued clients get a notification)
 - **States:** empty queue · credit running low (amber warning) ·
-  **credit at zero** (red screen: "You're hidden from clients — top up now")
+  **credit at zero** (red screen: "You're hidden from clients — top up now") ·
+  no service on the price list yet (the walk-in sheet says so and links to O6)
 - **Live:** new bookings appear without a refresh, with a sound
 
 ### O4 · Booking detail — `(owner)/booking/[id]`
-Client (first name and a masked number) · vehicle and photo · service and price · timestamps · actions
+Client (first name and phone number) · vehicle and photo · service and price · timestamps · actions
+
+**Phone numbers are shown in full, on both sides, deliberately.** An owner who cannot
+reach the car in front of them cannot run the queue. `maskPhone()` is kept in
+`src/lib/format.ts` with its tests, unwired — we will want it the first time an owner
+complains about late-night calls, and turning it on is a one-line change.
 
 ### O5 · My wash page — `(owner)/wash` ⭐
 The same page as C3 but **editable**: photos, description, hours, bays, location, open/closed

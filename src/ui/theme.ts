@@ -24,6 +24,9 @@ const dark = {
   primary: '#F5F6F7',
   onPrimary: '#0B0C0E',
 
+  /** behind a sheet, so the screen underneath reads as out of reach */
+  scrim: 'rgba(0,0,0,0.60)',
+
   ok: '#3FB27F',
   warn: '#E0A93A',
   bad: '#E0574A',
@@ -42,6 +45,8 @@ const light = {
 
   primary: '#0B0C0E',
   onPrimary: '#FFFFFF',
+
+  scrim: 'rgba(11,12,14,0.45)',
 
   /** darkened so contrast holds on white */
   ok: '#1F9D6B',
