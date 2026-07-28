@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new push supersedes whatever was already running for the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck, tests, bundle
+    runs-on: ubuntu-latest
+
+    env:
+      # Obviously fake, and not secret. app.config.ts reads these into `extra`;
+      # supplying them keeps the resolved config deterministic. Nothing in a
+      # bundle build talks to Supabase, so no real project is needed.
+      EXPO_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # tsc validates every router href against .expo/types/router.d.ts, but
+      # that file is generated, gitignored, and only ever written by the dev
+      # server — `expo export` does not emit it and no CLI command does.
+      # Without this step a bogus href passes the typecheck silently, which
+      # makes the whole job weaker than it looks.
+      - name: Generate typed routes
+        run: |
+          npx expo start --port 8081 > /tmp/metro.log 2>&1 &
+          metro_pid=$!
+          for _ in $(seq 1 90); do
+            [ -f .expo/types/router.d.ts ] && break
+            sleep 1
+          done
+          # Kill by pid, not `pkill -f "expo start"` — that pattern can match
+          # the shell running this very script and take the step down with it.
+          kill "$metro_pid" 2>/dev/null || true
+
+          # Fail loudly rather than let the typecheck quietly stop checking
+          # routes if Expo ever changes how these are produced.
+          if [ ! -f .expo/types/router.d.ts ]; then
+            echo "::error::expo did not generate .expo/types/router.d.ts — route validation would be silently skipped"
+            tail -50 /tmp/metro.log
+            exit 1
+          fi
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test -- --ci
+
+      - name: Android bundle
+        run: npx expo export --platform android --output-dir /tmp/ci-export
+
+  database:
+    name: RLS and privilege tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # PostGIS, because 0001 creates the extension.
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Applies every migration in order to a throwaway database, then asserts
+      # that a signed-in user cannot grant themselves admin, unblock
+      # themselves, or clear their own no-show count. Fails if 0003 is ever
+      # weakened or dropped.
+      - name: Run SQL tests
+        run: ./tests/sql/run.sh

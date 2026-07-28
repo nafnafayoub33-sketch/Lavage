@@ -75,6 +75,104 @@ export type CarWashRow = {
   created_at: string;
 };
 
+/** 0001_init.sql — create table services */
+export type ServiceRow = {
+  id: string;
+  car_wash_id: string;
+  name: string;
+  price: number;
+  duration_min: number;
+  vehicle_type: string;
+  is_active: boolean;
+};
+
+/**
+ * 0006_queue_events.sql — one summary row per wash, so Realtime can tell a
+ * client the queue moved. RLS on bookings makes that impossible to learn
+ * from bookings directly.
+ */
+export type QueueEventRow = {
+  car_wash_id: string;
+  cars_waiting: number;
+  now_serving: number | null;
+  updated_at: string;
+};
+
+/** 0001_init.sql — create type booking_status as enum (...) */
+export type BookingStatus =
+  | 'pending'
+  | 'in_progress'
+  | 'done'
+  | 'confirmed'
+  | 'cancelled_client'
+  | 'cancelled_owner'
+  | 'no_show';
+
+/** 0008 — the client's word about whether they are coming. Null = not said. */
+export type ArrivalStatus = 'on_the_way' | 'arrived';
+
+/** 0001_init.sql — create table bookings */
+export type BookingRow = {
+  id: string;
+  car_wash_id: string;
+  client_id: string;
+  vehicle_id: string | null;
+  service_id: string;
+  status: BookingStatus;
+  arrival: ArrivalStatus | null;
+  price: number;
+  payment_method: 'cash' | 'card' | 'wallet';
+  ticket_no: number;
+  estimated_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  confirmed_at: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  created_at: string;
+};
+
+/**
+ * The statuses that mean "this client is currently in a queue somewhere".
+ * 0001 enforces one at a time per client with a partial unique index, so a
+ * query filtered on these can safely expect at most one row.
+ */
+export const ACTIVE_BOOKING_STATUSES = ['pending', 'in_progress', 'done'] as const;
+
+/** 0009_manual_topup.sql */
+export type TopupStatus = 'pending' | 'approved' | 'rejected';
+
+export type TopupRequestRow = {
+  id: string;
+  car_wash_id: string;
+  amount: number;
+  reference: string;
+  receipt_url: string | null;
+  status: TopupStatus;
+  admin_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+};
+
+/** 0001_init.sql — create table credit_transactions */
+export type CreditTransactionRow = {
+  id: string;
+  car_wash_id: string;
+  type: 'topup' | 'charge' | 'refund' | 'bonus';
+  amount: number;
+  balance_after: number;
+  booking_id: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+/** 0001_init.sql — create table platform_settings */
+export type PlatformSettingRow = {
+  key: string;
+  value: unknown;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -90,6 +188,93 @@ export type Database = {
         Update: Partial<CarWashRow>;
         Relationships: [];
       };
+      queue_events: {
+        Row: QueueEventRow;
+        // Written only by the refresh_queue_event trigger; no client inserts.
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: 'queue_events_car_wash_id_fkey';
+            columns: ['car_wash_id'];
+            isOneToOne: true;
+            referencedRelation: 'car_washes';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      topup_requests: {
+        Row: TopupRequestRow;
+        // status and admin_note are refused by RLS on insert; the owner only
+        // ever files a pending request.
+        Insert: {
+          car_wash_id: string;
+          amount: number;
+          reference: string;
+          receipt_url?: string | null;
+          id?: string;
+        };
+        Update: Partial<TopupRequestRow>;
+        Relationships: [];
+      };
+      credit_transactions: {
+        Row: CreditTransactionRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      platform_settings: {
+        Row: PlatformSettingRow;
+        Insert: PlatformSettingRow;
+        Update: Partial<PlatformSettingRow>;
+        Relationships: [];
+      };
+      services: {
+        Row: ServiceRow;
+        // vehicle_type and is_active have defaults in 0001, so they are
+        // optional on insert even though the column is NOT NULL.
+        Insert: Omit<ServiceRow, 'id' | 'vehicle_type' | 'is_active'> & {
+          id?: string;
+          vehicle_type?: string;
+          is_active?: boolean;
+        };
+        Update: Partial<ServiceRow>;
+        Relationships: [
+          {
+            foreignKeyName: 'services_car_wash_id_fkey';
+            columns: ['car_wash_id'];
+            isOneToOne: false;
+            referencedRelation: 'car_washes';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      bookings: {
+        Row: BookingRow;
+        Insert: Omit<BookingRow, 'id' | 'ticket_no' | 'created_at'> & {
+          id?: string;
+          // assigned by the set_ticket_no trigger, never by the client
+          ticket_no?: number;
+          created_at?: string;
+        };
+        Update: Partial<BookingRow>;
+        Relationships: [
+          {
+            foreignKeyName: 'bookings_car_wash_id_fkey';
+            columns: ['car_wash_id'];
+            isOneToOne: false;
+            referencedRelation: 'car_washes';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bookings_service_id_fkey';
+            columns: ['service_id'];
+            isOneToOne: false;
+            referencedRelation: 'services';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -98,10 +283,67 @@ export type Database = {
         Args: { p_phone: string };
         Returns: boolean;
       };
+      /** 0004_nearby_car_washes_price_and_open.sql — backs C1 */
+      nearby_car_washes: {
+        Args: { p_lat: number; p_lng: number; p_radius_m?: number };
+        Returns: {
+          id: string;
+          name: string;
+          address: string;
+          photos: string[];
+          latitude: number;
+          longitude: number;
+          distance_m: number;
+          rating_avg: number;
+          rating_count: number;
+          bays_count: number;
+          cars_ahead: number;
+          wait_minutes: number;
+          price_from: number | null;
+          is_open: boolean;
+        }[];
+      };
+      /** 0005_queue_state_security_definer.sql — C6 */
+      my_queue_position: {
+        Args: { p_booking_id: string };
+        Returns: {
+          cars_ahead: number;
+          wait_minutes: number;
+          now_serving: number | null;
+        }[];
+      };
+      /** 0009_manual_topup.sql — D8 approves a bank transfer */
+      approve_topup: {
+        Args: { p_request_id: string; p_note?: string | null };
+        Returns: undefined;
+      };
+      reject_topup: {
+        Args: { p_request_id: string; p_note: string };
+        Returns: undefined;
+      };
+      /** 0007_owner_queue.sql — backs O3 */
+      owner_queue: {
+        Args: { p_wash_id: string };
+        Returns: {
+          booking_id: string;
+          ticket_no: number;
+          status: BookingStatus;
+          arrival: ArrivalStatus | null;
+          price: number;
+          created_at: string;
+          started_at: string | null;
+          service_name: string;
+          service_minutes: number;
+          client_first_name: string;
+          client_phone: string | null;
+          vehicle_label: string | null;
+        }[];
+      };
     };
     Enums: {
       user_role: UserRole;
       wash_status: WashStatus;
+      arrival_status: ArrivalStatus;
     };
     CompositeTypes: Record<string, never>;
   };

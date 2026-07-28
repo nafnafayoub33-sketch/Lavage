@@ -11,9 +11,9 @@ import type { ExpoConfig } from 'expo/config';
  * protects the data, not secrecy of this key.
  */
 const config: ExpoConfig = {
-  name: 'Lavage',
-  slug: 'lavage',
-  scheme: 'lavage',
+  name: 'Lavajna',
+  slug: 'lavajna',
+  scheme: 'lavajna',
   version: '1.0.0',
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
@@ -21,11 +21,23 @@ const config: ExpoConfig = {
 
   ios: {
     supportsTablet: false,
-    bundleIdentifier: 'com.lavage.app',
+    bundleIdentifier: 'com.lavajna.app',
   },
 
   android: {
-    package: 'com.lavage.app',
+    package: 'com.lavajna.app',
+    config: {
+      // C1's map. Android has no built-in map provider, so without this the
+      // MapView renders as a blank rectangle and nothing in the build says
+      // why. See README → "Google Maps key". iOS uses Apple Maps and needs
+      // no key.
+      //
+      // Not EXPO_PUBLIC_: it is read here at config time and baked into the
+      // native manifest, not into the JS bundle. It still ships inside the
+      // APK, so it must be restricted by package name and SHA-1 in the
+      // Google Cloud console — restriction is what protects it, not secrecy.
+      googleMaps: { apiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY },
+    },
     adaptiveIcon: {
       backgroundColor: '#0B0C0E',
       foregroundImage: './assets/images/android-icon-foreground.png',
@@ -65,6 +77,12 @@ const config: ExpoConfig = {
   extra: {
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+
+    // Whether, not what. `android.config` is stripped out of the public
+    // manifest, so the app cannot read the key back to check it is there —
+    // and a missing key shows up as a blank rectangle with no error anywhere.
+    // This lets C1's map say so instead.
+    hasAndroidMapsKey: Boolean(process.env.GOOGLE_MAPS_ANDROID_API_KEY),
   },
 };
 

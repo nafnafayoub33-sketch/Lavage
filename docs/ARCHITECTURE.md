@@ -1,4 +1,4 @@
-# Lavage Platform — Architecture
+# Lavajna Platform — Architecture
 
 One codebase → Android + iOS.
 
@@ -14,7 +14,7 @@ One codebase → Android + iOS.
 | Maps | react-native-maps | native map on both platforms |
 | Push | Expo Notifications | one API for FCM + APNs |
 | Auth | **Phone + SMS OTP** (Supabase phone auth) | everyone in Morocco has a number; no password to forget. Needs an SMS provider configured in the Supabase dashboard |
-| Payments | Phase 2 — CMI / PayZone / Naps wrapped behind `PaymentGateway` interface | never call a provider SDK directly from a screen |
+| Payments | **Phase 1: manual bank transfer, admin-approved.** Phase 2 swaps in CMI / PayZone / Naps behind the same `PaymentGateway` interface | never call a provider SDK directly from a screen |
 
 The whole data layer sits behind repositories (`src/data/repositories`). If Supabase is ever
 swapped out, screens don't change.
@@ -22,7 +22,7 @@ swapped out, screens don't change.
 ## Folder structure
 
 ```
-lavage/
+lavajna/
 ├─ app/                          # expo-router (routes only, no logic)
 │  ├─ (auth)/                    # login, otp, role picker
 │  ├─ (client)/                  # map, wash detail, booking, my queue, history
@@ -83,6 +83,21 @@ money is always `int` centimes and only formatted at render time.
 4. trigger deducts **1 DH** from the wash's credit (or 1 from the free 100)
 5. balance hits 0 → the wash disappears from `nearby_car_washes` automatically
 
+**Credit top-up (O7, phase 1 — decided)**
+1. the owner picks an amount and transfers it to the platform's bank account,
+   whose details live in `platform_settings.bank_transfer` and are edited in D9
+2. they submit the transfer reference; `topup_requests` records it as `pending`
+   and **no balance moves**
+3. an admin checks the statement and calls `approve_topup()`, which credits the
+   wash and writes a `credit_transaction` of type `topup` with a reason — the
+   same ledger every charge goes through
+4. `reject_topup()` declines with a reason and moves nothing
+
+O7 talks only to the `PaymentGateway` interface in `src/core/payments`. It asks
+the gateway for its preset amounts and whether money settles immediately, and
+shows the bank panel only when a human has to check. A card provider implements
+the same interface and O7 does not change.
+
 **Owner cancellation**
 Reason is mandatory. `refresh_cancel_rates()` runs nightly:
 ≥20% → warning, ≥40% → auto `suspended`. "Closed today" toggle exists so a
@@ -106,8 +121,6 @@ client's `no_show_count` +1. At 3, booking is blocked for 48h.
 
 ## Before writing screens — decisions still open
 
-1. Credit top-up in phase 1: manual (bank transfer, admin credits the account) or
-   card gateway right away? Manual is faster to ship and legally simpler.
-2. App name + brand colors. Placeholders in `app.config.ts` today: `Lavage` /
-   `lavage` / `com.lavage.app`. The bundle ID is permanent after the first store
-   submission — settle it before then.
+1. Brand colors. The app name is settled: **Lavajna** / `lavajna` /
+   `com.lavajna.app`. The bundle ID is permanent after the first store
+   submission, so it should not move again.

@@ -1,5 +1,5 @@
 {
-  "name": "lavage",
+  "name": "lavajna",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
@@ -26,6 +26,7 @@
     "react-i18next": "^17.0.11",
     "react-native": "0.86.0",
     "react-native-gesture-handler": "~2.32.0",
+    "react-native-maps": "^1.27.2",
     "react-native-reanimated": "4.5.0",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
@@ -34,14 +35,18 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
+    "babel-preset-expo": "~57.0.4",
+    "jest": "~29.7.0",
+    "jest-expo": "~57.0.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "lint": "expo lint",
+    "test": "jest",
     "typecheck": "tsc --noEmit"
   },
   "private": true
