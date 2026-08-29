@@ -1,0 +1,228 @@
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------------
+   Design tokens.
+
+   Everything visual is defined once, here, and consumed as a Tailwind utility
+   (`bg-surface`, `text-fg-muted`, `rounded-md`). No component hardcodes a
+   colour, a radius or a duration.
+
+   Light and dark are the same variable names with different values, so a
+   component never writes a `dark:` variant for colour — it asks for `bg-surface`
+   and gets the right one. Three states are covered: the system preference, and
+   an explicit choice stored on <html data-theme>.
+--------------------------------------------------------------------------- */
+
+:root {
+  /* surfaces */
+  --bg: #faf9f7;
+  --surface: #ffffff;
+  --surface-2: #f3f1ee;
+  --surface-inset: #ebe8e4;
+
+  /* text */
+  --fg: #1c1917;
+  --fg-muted: #57534e;
+  --fg-subtle: #79716b;
+
+  /* lines */
+  --border: #e7e5e4;
+  --border-strong: #d6d3d1;
+
+  /* the one primary — a warm clay, for a product about trades */
+  --primary: #9a3412;
+  --primary-hover: #7c2d12;
+  --primary-fg: #ffffff;
+  --primary-soft: #fff1e9;
+
+  /* supporting */
+  --accent: #0f766e;
+  --accent-soft: #eafaf7;
+  --success: #15803d;
+  --success-soft: #eefaf1;
+  --warning: #b45309;
+  --warning-soft: #fef6e7;
+  --danger: #b91c1c;
+  --danger-soft: #fdeeee;
+
+  --focus: #0f766e;
+  --overlay: rgb(28 25 23 / 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #14120f;
+    --surface: #1c1917;
+    --surface-2: #262220;
+    --surface-inset: #2f2a27;
+
+    --fg: #fafaf9;
+    --fg-muted: #a8a29e;
+    --fg-subtle: #857f7a;
+
+    --border: #2f2a27;
+    --border-strong: #45403c;
+
+    --primary: #f97316;
+    --primary-hover: #fb923c;
+    --primary-fg: #1c1917;
+    --primary-soft: #2a1a11;
+
+    --accent: #2dd4bf;
+    --accent-soft: #10231f;
+    --success: #4ade80;
+    --success-soft: #11220f;
+    --warning: #fbbf24;
+    --warning-soft: #241a09;
+    --danger: #f87171;
+    --danger-soft: #2a1414;
+
+    --focus: #2dd4bf;
+    --overlay: rgb(0 0 0 / 0.6);
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #14120f;
+  --surface: #1c1917;
+  --surface-2: #262220;
+  --surface-inset: #2f2a27;
+
+  --fg: #fafaf9;
+  --fg-muted: #a8a29e;
+  --fg-subtle: #857f7a;
+
+  --border: #2f2a27;
+  --border-strong: #45403c;
+
+  --primary: #f97316;
+  --primary-hover: #fb923c;
+  --primary-fg: #1c1917;
+  --primary-soft: #2a1a11;
+
+  --accent: #2dd4bf;
+  --accent-soft: #10231f;
+  --success: #4ade80;
+  --success-soft: #11220f;
+  --warning: #fbbf24;
+  --warning-soft: #241a09;
+  --danger: #f87171;
+  --danger-soft: #2a1414;
+
+  --focus: #2dd4bf;
+  --overlay: rgb(0 0 0 / 0.6);
+}
+
+/* `inline` so the utilities resolve to the variable itself rather than to the
+   value it had at build time — which is what lets them follow the theme. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-inset: var(--surface-inset);
+
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-soft: var(--primary-soft);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --color-focus: var(--focus);
+  --color-overlay: var(--overlay);
+}
+
+@theme {
+  /* Noto Sans Arabic first so Arabic never falls back to something that
+     renders the letterforms badly. */
+  --font-sans:
+    'Noto Sans Arabic', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  /* Latin digits stay Latin in all three languages, including inside Arabic
+     text: prices, phone numbers and references are read as numbers, not words. */
+  --font-numeric: 'Inter', system-ui, sans-serif;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+
+  /* The motion budget. Anything longer than `slow` needs a reason. */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Touch targets. `tap` is the floor everywhere; `tap-pro` is for the
+     tradesman's own screens, tapped outdoors with wet or dirty hands. */
+  --spacing-tap: 2.75rem;
+  --spacing-tap-pro: 3.25rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    background-color: var(--bg);
+    color-scheme: light dark;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Numbers, prices, phone numbers and references: Latin digits, left to
+     right, in every language. */
+  .numeric {
+    font-family: var(--font-numeric);
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Swapping the theme changes every colour at once. Without this, each
+     element with `transition-colors` cross-fades from the old palette to the
+     new one and the whole page smears for a moment — motion that reports
+     nothing. The class is added around the swap and removed a frame later. */
+  .theme-switching,
+  .theme-switching *,
+  .theme-switching *::before,
+  .theme-switching *::after {
+    transition: none !important;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

@@ -71,6 +71,33 @@ web/src/ui/            the design system, including theme.ts
 web/src/data/          api client and TanStack Query hooks
 ```
 
+## A build warning you will see, and should not "fix"
+
+`npm run build` and `npm test` print one warning:
+
+```
+▲ [WARNING] Cannot find base config file "expo/tsconfig.base" [tsconfig.json]
+    ../../tsconfig.json:2:13
+```
+
+That is the *repository root's* tsconfig, belonging to the unrelated Lavage
+Expo app. Vite compiles `vite.config.ts` with esbuild before any of our config
+is read, and esbuild's tsconfig discovery walks up out of this folder to find
+it. It affects nothing: `vite.config.ts` has no JSX and no `@/` imports, and
+every source file is compiled against `web/tsconfig.json`.
+
+Two things follow:
+
+- **Do not edit the root tsconfig.** It belongs to the other project.
+- **Keep `web/tsconfig.json` strict JSON, with no `//` comments.** esbuild's
+  parser rejects comments *silently* and keeps climbing — which is how it found
+  the root config in the first place, along with a `paths` mapping that points
+  `@/*` at the other project's `src`. `src/test/tsconfig.test.ts` guards this.
+
+Running `vite build --configLoader native` silences the warning on Node 22.6+,
+which is why the scripts do not do it: it would raise the Node floor for
+cosmetics.
+
 ## Money
 
 Always integer centimes. `3000` is 30,00 DH. Formatted only at render time.

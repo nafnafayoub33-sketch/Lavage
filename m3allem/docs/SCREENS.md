@@ -46,7 +46,7 @@ Trades & cities · Settings · Audit log.
   request — it is how the marketplace fills) · error with retry
 - → P3, C1
 
-### P3 · Tradesman profile — `/pro/:id`
+### P3 · Tradesman profile — `/m3allem/:id`
 - **Contents:** photo, name, trades, city and radius, bio, portfolio gallery, rating
   with review count, jobs done, member since, reviews list
 - **Actions:** *Ask this m3allem* (pre-fills C1 with his trade)
