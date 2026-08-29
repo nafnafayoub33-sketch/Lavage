@@ -12,10 +12,12 @@ export const color = {
   surface: 'var(--surface)',
   surface2: 'var(--surface-2)',
   surfaceInset: 'var(--surface-inset)',
+  surfaceBrand: 'var(--surface-brand)',
 
   fg: 'var(--fg)',
   fgMuted: 'var(--fg-muted)',
   fgSubtle: 'var(--fg-subtle)',
+  fgOnBrand: 'var(--fg-on-brand)',
 
   border: 'var(--border)',
   borderStrong: 'var(--border-strong)',
@@ -29,7 +31,16 @@ export const color = {
   success: 'var(--success)',
   warning: 'var(--warning)',
   danger: 'var(--danger)',
+  star: 'var(--star)',
   focus: 'var(--focus)',
+} as const
+
+/** Depth. Cards lift, the primary action lifts a little more, sheets lift most. */
+export const shadow = {
+  sm: 'var(--shadow-sm)',
+  md: 'var(--shadow-md)',
+  lg: 'var(--shadow-lg)',
+  brand: 'var(--shadow-brand)',
 } as const
 
 export const radius = {
@@ -37,6 +48,7 @@ export const radius = {
   md: 'var(--radius-md)',
   lg: 'var(--radius-lg)',
   xl: 'var(--radius-xl)',
+  pill: 'var(--radius-pill)',
 } as const
 
 /**

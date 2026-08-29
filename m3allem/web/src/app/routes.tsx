@@ -27,10 +27,13 @@ export function AppRoutes() {
         {/* Public profile lives under /m3allem, not /pro: /pro is the
             tradesman's own area and /pro/:id would fight /pro/requests. */}
         <Route path="m3allem/:id" element={<NotBuilt screen="P3" />} />
-        <Route path="login" element={<LoginPage />} />
-        <Route path="register" element={<RegisterPage />} />
-        <Route path="forgot" element={<ForgotPage />} />
       </Route>
+
+      {/* Outside PublicLayout on purpose: AuthLayout is a full-screen frame
+          with its own header, and nesting the two showed two logos. */}
+      <Route path="login" element={<LoginPage />} />
+      <Route path="register" element={<RegisterPage />} />
+      <Route path="forgot" element={<ForgotPage />} />
 
       <Route
         path="client"
