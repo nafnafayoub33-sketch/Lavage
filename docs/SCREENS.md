@@ -185,18 +185,53 @@ Request: location, car photos, service, time · live tracking · before/after ph
 ### O1 · Register the car wash — `(owner)/register`
 The owner arrives from A7 with a profile row already created, so this screen is
 only ever about the car wash, never about the person.
-Step by step: name and description · location on the map plus address · photos (3 minimum) ·
-number of bays · hours · documents (ID and business registration) · submit
+
+Four steps: **name** and description and phone · **location** — address, city, and a
+draggable pin on the map · **photos**, 3 minimum and 8 maximum · **details** — bays,
+hours, and a review of everything before submitting.
+
+- A step advances only when it has nothing missing. "Nothing missing" is
+  `isStepComplete()` in `src/core/usecases/washApplication.ts`, the same function that
+  decides whether submit is allowed, so the two cannot disagree.
+- The pin is validated against Morocco's bounds, in the usecase and again in
+  `register_car_wash` (0014). A swapped latitude and longitude is the likeliest way to
+  produce a wash nobody can ever find, and it is silent otherwise.
+- Submitting is three ordered calls: `register_car_wash` returns the new id, the photos
+  upload to `media/wash-photos/<id>/`, then `set_wash_media` attaches the URLs. The id
+  has to exist before the photos can go anywhere, which is why it is not one call.
+- A second application while one is undecided is refused — it would put a duplicate in
+  D2's queue and leave the owner looking at whichever row loaded first.
+- **States:** loading · error with retry · already registered (redirects to O2 or the
+  board) · per-step problems · submitting · offline.
+
+**Documents (ID and business registration) are deferred.** The bucket and its policies
+now exist (0013), so this is no longer blocked on storage — it is deferred on the
+product question of which documents are required and who may read them, which is a
+different decision from a shopfront photo. When it lands it is a fifth step here and a
+section on D2's card.
+
 → O2
 
 ### O2 · Pending approval — `(owner)/pending`
-"Your application is with the admin, we'll get back to you within 48 hours" · edit details · contact
-**Rejected:** reason plus "Submit again"
+Two screens behind one route, because the owner reaches both the same way — they opened
+the app and their wash is not live.
+
+- **Pending:** "Your application is with the admin, we'll get back to you within 48
+  hours" · a summary of what was filed · edit · contact. Editing is the primary action;
+  waiting is the correct thing to do and nothing should compete with it.
+- **Rejected:** the reason, verbatim, then "Submit again" as the primary action with
+  edit beside it.
+
+Editing reopens O1's four steps in place, starting at the first incomplete one — someone
+answering a specific objection should not be dropped back on step one to fix a photo.
 
 `rejected` is its own wash status (0012), distinct from `suspended`: rejected never went
 live and is answered by the owner, suspended was live and is lifted by an admin. The reason
 is in `car_washes.review_note`, written only by D2 and read-only to the owner.
 "Submit again" calls `resubmit_wash()`, which moves the application back to `pending`.
+
+**States:** loading · error with retry · no wash at all (redirects to O1) · pending ·
+rejected · editing · saving · offline.
 
 ### O3 · Queue — `(owner)/queue` ⭐⭐ (the most important screen in the app)
 - **Top:** credit balance plus "Top up" · open/closed badge

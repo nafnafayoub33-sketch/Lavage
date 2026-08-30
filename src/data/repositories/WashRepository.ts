@@ -164,9 +164,9 @@ export type WashDraft = {
 /**
  * O5 — the editable half of the wash page.
  *
- * Location, photos and status are deliberately absent: the first two need a
- * map picker and a storage bucket, and status is the admin's (D2/D3), not the
- * owner's.
+ * Status is deliberately absent: it belongs to the admin (D2/D3), and 0010
+ * refuses it here anyway. Location and photos go through setWashMedia()
+ * below, because a PostGIS geography cannot be written from the client.
  */
 export async function updateWash(
   washId: string,
@@ -186,5 +186,108 @@ export async function updateWash(
     .eq('id', washId);
 
   if (error) return { ok: false, reason: error.code === undefined ? 'offline' : 'unknown' };
+  return { ok: true, value: undefined };
+}
+
+/* ------------------------------------------------------------------ */
+/* O1 · registration                                                    */
+/* ------------------------------------------------------------------ */
+
+export type WashRegistration = {
+  name: string;
+  description: string | null;
+  address: string;
+  city: string;
+  phone: string | null;
+  latitude: number;
+  longitude: number;
+  baysCount: number;
+  opensAt: string;
+  closesAt: string;
+};
+
+/**
+ * O1 — files the application and returns the new wash id.
+ *
+ * An RPC rather than an insert for two reasons: `location` is a PostGIS
+ * geography that PostgREST cannot be handed from the client, and 0014 needs
+ * somewhere to refuse a second undecided application.
+ *
+ * The id comes back because the photos cannot be uploaded until it exists —
+ * they live at wash-photos/<id>/ and 0013's policy checks that folder
+ * against owns_wash().
+ */
+export async function registerWash(
+  registration: WashRegistration,
+): Promise<AuthResult<string>> {
+  const { data, error } = await supabase.rpc('register_car_wash', {
+    p_name: registration.name,
+    p_description: registration.description,
+    p_address: registration.address,
+    p_city: registration.city,
+    p_lat: registration.latitude,
+    p_lng: registration.longitude,
+    p_phone: registration.phone,
+    p_bays: registration.baysCount,
+    p_opens_at: registration.opensAt,
+    p_closes_at: registration.closesAt,
+  });
+
+  if (error) {
+    return { ok: false, reason: error.code === undefined ? 'offline' : 'unknown' };
+  }
+  return { ok: true, value: data };
+}
+
+/**
+ * Photos and the pin, together — O1 saves both after registration, and O2's
+ * edit changes either. Omitting one leaves it untouched, so moving the pin
+ * does not mean resending every photo.
+ */
+export async function setWashMedia(
+  washId: string,
+  media: { photos?: readonly string[]; latitude?: number; longitude?: number },
+): Promise<AuthResult<void>> {
+  const { error } = await supabase.rpc('set_wash_media', {
+    p_wash_id: washId,
+    p_photos: media.photos === undefined ? null : [...media.photos],
+    p_lat: media.latitude ?? null,
+    p_lng: media.longitude ?? null,
+  });
+
+  if (error) {
+    return { ok: false, reason: error.code === undefined ? 'offline' : 'unknown' };
+  }
+  return { ok: true, value: undefined };
+}
+
+/**
+ * The wash's own pin. nearby_car_washes() cannot answer this — it only
+ * returns approved washes inside a radius, and O1/O2 are looking at one that
+ * is neither.
+ */
+export async function getWashPin(
+  washId: string,
+): Promise<AuthResult<{ latitude: number; longitude: number } | null>> {
+  const { data, error } = await supabase.rpc('my_wash_pin', { p_wash_id: washId });
+
+  if (error) {
+    return { ok: false, reason: error.code === undefined ? 'offline' : 'unknown' };
+  }
+
+  const pin = (data ?? [])[0];
+  return {
+    ok: true,
+    value: pin === undefined ? null : { latitude: pin.latitude, longitude: pin.longitude },
+  };
+}
+
+/** O2 — "Submit again", after the owner has answered what D2 objected to. */
+export async function resubmitWash(washId: string): Promise<AuthResult<void>> {
+  const { error } = await supabase.rpc('resubmit_wash', { p_wash_id: washId });
+
+  if (error) {
+    return { ok: false, reason: error.code === undefined ? 'offline' : 'unknown' };
+  }
   return { ok: true, value: undefined };
 }

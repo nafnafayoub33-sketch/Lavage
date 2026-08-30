@@ -384,6 +384,40 @@ export type Database = {
         Args: { p_wash_id: string };
         Returns: undefined;
       };
+      /**
+       * 0014_wash_registration.sql — O1. Returns the new wash id, which the
+       * caller needs before it can upload photos to wash-photos/<id>/.
+       */
+      register_car_wash: {
+        Args: {
+          p_name: string;
+          p_description: string | null;
+          p_address: string;
+          p_city: string;
+          p_lat: number;
+          p_lng: number;
+          p_phone: string | null;
+          p_bays: number;
+          p_opens_at: string;
+          p_closes_at: string;
+        };
+        Returns: string;
+      };
+      /** 0014 — photos and the pin. Omitted arguments are left untouched. */
+      set_wash_media: {
+        Args: {
+          p_wash_id: string;
+          p_photos?: string[] | null;
+          p_lat?: number | null;
+          p_lng?: number | null;
+        };
+        Returns: undefined;
+      };
+      /** 0014 — the owner's own pin, whatever the wash's status */
+      my_wash_pin: {
+        Args: { p_wash_id: string };
+        Returns: { latitude: number; longitude: number }[];
+      };
       /** 0007_owner_queue.sql — backs O3 */
       owner_queue: {
         Args: { p_wash_id: string };
